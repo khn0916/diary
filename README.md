@@ -4,7 +4,9 @@ GitHub 저장소: [khn0916/diary](https://github.com/khn0916/diary)
 
 **공개 종이 다이어리: [https://khn0916.github.io/diary/](https://khn0916.github.io/diary/)**
 
-이 주소는 별도 서버 실행 없이 열립니다. 아래 `127.0.0.1` 주소는 개발용 로컬 주소이며, `python server.py`가 실행 중일 때만 사용할 수 있습니다. 새 Python Plan–Do–See 화면과 서버 DB는 아직 공개 배포되지 않았습니다.
+**공개 계획·실행·회고: [https://khn0916.github.io/diary/pds/](https://khn0916.github.io/diary/pds/)**
+
+두 화면 모두 GitHub Pages에서 서버 실행 없이 열립니다. 기본 사용 경로는 HTML 버전입니다. 기존 다이어리 오른쪽 위의 ‘계획 · 실행 · 회고’ 링크로 이동할 수 있습니다.
 
 이 폴더를 다이어리 프로젝트의 작업 기준으로 사용합니다. 사이트 호스팅과 배포는 별도 요청 시 진행합니다.
 
@@ -21,9 +23,23 @@ GitHub 저장소: [khn0916/diary](https://github.com/khn0916/diary)
 
 로컬 서버 예시: 이 폴더에서 `python -m http.server 5175` 실행 후 `http://localhost:5175`를 여세요.
 
-## 과제6: Python Plan–Do–See
+## 과제6: HTML Plan–Do–See (기본)
 
-기존 `index.html`, `style.css`, `app.js`는 변경하지 않고 별도 과제 화면을 추가했습니다. 새 화면에는 JavaScript를 추가하지 않았으며 HTML 폼의 처리를 Python 서버가 담당합니다.
+- `pds/index.html` + `pds-model.js` + `pds-storage.js` + `pds-web.js`로 동작합니다. 입력·저장을 위해 브라우저 JavaScript가 필요합니다. Java와는 관계없습니다.
+- 계획 기간·우선순위·성공 기준·예상 시간, 최초 계획과 수정 이력, 할 일 CRUD·검색·필터·정렬을 제공합니다.
+- 실행 시작·종료·분 단위 실제 시간·막힘 사유를 할 일에 연결하고 중복 완료와 중복 실행 저장을 방지합니다.
+- 집계 숫자를 눌러 근거 할 일로 이동하고 연결된 실행 기록을 볼 수 있습니다. 회고 개선점은 다음 계획에 연결됩니다.
+- IndexedDB의 원자적 트랜잭션으로 같은 브라우저의 여러 탭에서도 중복 저장을 방지합니다. 새로고침 후 ID·값이 유지됩니다.
+- 전체 PDS 기록을 JSON으로 내보내고 복원할 수 있습니다. 종이 다이어리의 기존 localStorage 메모는 건드리지 않습니다.
+- 데이터는 해당 기기·브라우저·주소에만 저장됩니다. 다른 사람에게 자동 공유되거나 다른 기기와 동기화되지 않습니다. 브라우저 데이터를 삭제하면 잃을 수 있으므로 백업하세요.
+- **이 HTML 버전은 서버 DB가 아닙니다. 과제의 서버 DB 영속화 조건(T06-C34)은 아직 충족하지 않습니다.** HTML 화면과 외부 DB를 연결하는 별도 작업이 필요합니다.
+- 본인의 실제 기록은 직접 입력해야 하며, 예시 데이터를 제출용 실제 기록으로 만들어 넣지 않았습니다.
+- 브라우저 저장 규칙: [contracts/pds-browser-v1.json](./contracts/pds-browser-v1.json)
+- 검증: `node test-browser-model.cjs` · `node --check pds-web.js` · `node verify-turn.cjs`
+
+## 이전 Python·SQLite 구현 (보존)
+
+Python·SQLite 서버 코드는 삭제하지 않고 별도로 보존합니다. `style.css`, `app.js`는 그대로이며, 기존 `index.html`에는 HTML 과제 화면으로 가는 탐색 링크와 링크용 CSS만 추가했습니다. 아래 Python 주소는 선택적으로 로컬 서버를 실행할 때 사용하는 주소입니다.
 
 ```text
 python server.py

@@ -20,6 +20,11 @@ STATIC = {'/': ('index.html', 'text/html; charset=utf-8'),
           '/index.html': ('index.html', 'text/html; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8'),
           '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
+          '/diary-navigation.css': ('diary-navigation.css', 'text/css; charset=utf-8'),
+          '/pds/index.html': ('pds/index.html', 'text/html; charset=utf-8'),
+          '/pds-model.js': ('pds-model.js', 'text/javascript; charset=utf-8'),
+          '/pds-storage.js': ('pds-storage.js', 'text/javascript; charset=utf-8'),
+          '/pds-web.js': ('pds-web.js', 'text/javascript; charset=utf-8'),
           '/pds.css': ('pds.css', 'text/css; charset=utf-8'),
           '/contracts/pds-schema-v2.json': ('contracts/pds-schema-v2.json','application/json; charset=utf-8')}
 

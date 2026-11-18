@@ -1,0 +1,37 @@
+{
+  "format": "yeobaek-pds-browser-v1",
+  "entrypoint": "pds/index.html",
+  "hosting": "GitHub Pages static HTML/CSS/JavaScript",
+  "storage": "IndexedDB database yeobaek-pds, object store documents, key current",
+  "server_database_connected": false,
+  "visibility": "The application is public. Records are local to the browser and origin; no device sync or sharing.",
+  "transaction": "A read-modify-write IndexedDB transaction updates a single linked document atomically, serializing simultaneous tabs.",
+  "collections": {
+    "plans": "id, title, start_date, end_date, priority, success_criteria, estimated_minutes, source_review_id, improvement, created_at, updated_at, deleted_at",
+    "versions": "id, plan_id, version, immutable snapshot of plan, created_at",
+    "tasks": "id, plan_id, title, due_date, priority, tags, estimated_minutes, completed, created_at, updated_at, deleted_at",
+    "executions": "id, task_id, started_at, ended_at, actual_minutes, blocked_reason, unique idempotency_key, created_at, updated_at, deleted_at",
+    "reviews": "id, plan_id, from_date, to_date, reflection, improvement, created_at, updated_at, deleted_at",
+    "completions": "unique task_id, completed_at"
+  },
+  "rules": {
+    "id": "Monotonically increasing safe integer across all collections except completions; restored IDs are preserved.",
+    "history": "Version 1 stores original plan; every edit appends a full snapshot with the same plan ID.",
+    "completion": "Set desired state rather than toggle; repeated completion leaves one completion record per task.",
+    "execution": "Retrying a save with the same idempotency_key returns its existing ID. Original plan estimates do not change.",
+    "timezone": "Asia/Seoul; dates YYYY-MM-DD; execution input and display in Seoul; persisted timestamps ISO 8601 UTC.",
+    "duration": "Integer minute; actual_minutes = (ended_at - started_at) / 60000; expected/actual/difference empty sums are zero.",
+    "cohort": "Selected plan, non-deleted tasks, optional inclusive due_date bounds. Actual sum includes all non-deleted executions of cohort tasks.",
+    "planned": "Count cohort tasks.",
+    "completed": "Count cohort tasks currently completed.",
+    "delayed": "Count incomplete cohort tasks with due_date before today in Seoul; completed tasks are excluded.",
+    "blocked": "Count distinct cohort tasks with at least one non-deleted execution with a non-blank blocking reason.",
+    "difference": "Sum actual execution minutes minus sum task estimated minutes.",
+    "evidence": "Every metric links to its task cohort/subset; opening a task displays its linked execution records.",
+    "sort": "due=(due_date,id); priority=(priority,due_date,id); created=(-id); estimate=(estimated_minutes,id).",
+    "next_plan": "At most one next plan per review; copy improvement and keep source_review_id.",
+    "delete": "Soft delete, preserving audit records in export and excluding them from views and sums.",
+    "backup": "JSON export includes all six collections. Restore validates values, IDs, references, history and uniqueness before atomic replacement. Paper diary notes are not overwritten."
+  },
+  "assignment_gap": "Browser persistence is not server DB persistence (T06-C34). Real records must be entered by the user, not generated as evidence."
+}
