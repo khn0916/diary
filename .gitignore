@@ -1,0 +1,7 @@
+# Local preview images and runtime files
+preview.jpg
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
