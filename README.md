@@ -2,6 +2,10 @@
 
 GitHub 저장소: [khn0916/diary](https://github.com/khn0916/diary)
 
+**공개 종이 다이어리: [https://khn0916.github.io/diary/](https://khn0916.github.io/diary/)**
+
+이 주소는 별도 서버 실행 없이 열립니다. 아래 `127.0.0.1` 주소는 개발용 로컬 주소이며, `python server.py`가 실행 중일 때만 사용할 수 있습니다. 새 Python Plan–Do–See 화면과 서버 DB는 아직 공개 배포되지 않았습니다.
+
 이 폴더를 다이어리 프로젝트의 작업 기준으로 사용합니다. 사이트 호스팅과 배포는 별도 요청 시 진행합니다.
 
 `index.html`을 브라우저에서 열면 사용할 수 있는 월간 다이어리입니다. 별도 설치나 빌드가 필요하지 않습니다.
