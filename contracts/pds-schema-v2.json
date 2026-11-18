@@ -1,0 +1,587 @@
+{
+  "schema_version": 2,
+  "engine": "SQLite",
+  "source": "schema.sql",
+  "login": false,
+  "visibility": "All visitors can view, create, modify, delete and export the shared PDS data. No access control.",
+  "scope": "PDS records only; the original paper diary remains unchanged and stores its own notes in browser localStorage.",
+  "date_rules": {
+    "timezone": "Asia/Seoul (UTC+09:00)",
+    "calendar_dates": "YYYY-MM-DD, inclusive start/end; no UTC conversion for dates.",
+    "timestamps": "ISO 8601 UTC with explicit +00:00; input and display use Seoul time.",
+    "execution_precision": "Whole minutes; reject seconds, fractional seconds and timezone offsets in local input.",
+    "delayed": "Incomplete, not deleted, due_date < current calendar date in Seoul. Completed tasks are excluded.",
+    "period_scope": "Selected plan, non-deleted tasks with due_date in the inclusive filter period. Blank bounds are unbounded.",
+    "actual_scope": "Sum all non-deleted executions linked to the selected task cohort, regardless of execution date."
+  },
+  "units": {
+    "estimated_minutes": "integer minute >= 0",
+    "actual_minutes": "integer minute = (ended_at-started_at)/60",
+    "priority": {
+      "1": "high",
+      "2": "normal",
+      "3": "low"
+    }
+  },
+  "aggregations": {
+    "planned": "Count of non-deleted tasks in cohort, not count of plan rows.",
+    "completed": "Count of cohort tasks with completed=1.",
+    "delayed": "Count of incomplete cohort tasks overdue in Seoul.",
+    "blocked": "Count of distinct cohort tasks with at least one non-deleted execution having a non-blank blocked_reason.",
+    "estimated": "Sum tasks.estimated_minutes in cohort, empty=0.",
+    "actual": "Sum executions.actual_minutes for non-deleted executions in cohort, empty=0.",
+    "difference": "actual-estimated, empty=0.",
+    "evidence": "Every metric links to the exact cohort or corresponding subset; each task links to all its execution records.",
+    "sorting": "Server side. due=(due_date,id); priority=(priority,due_date,id); created=(-id); estimate=(estimated_minutes,id)."
+  },
+  "integrity": {
+    "plan_history": "Stable plan ID; append a full immutable snapshot at creation and after each edit. Version 1 preserves original.",
+    "task_completion": "Set desired completed state, never toggle blindly; completion_records.task_id is unique. Undo removes current completion record.",
+    "execution_idempotency": "executions.idempotency_key unique; serialized write transaction returns original ID on duplicate request.",
+    "next_plan": "plans.source_review_id unique; copy improvement into next plan and link to original review; repeated request returns original plan.",
+    "deletion": "Soft delete plan/task/execution/review, exclude deleted data from UI and aggregates; export retains audit rows.",
+    "review": "Reflection + improvement + inclusive date bounds + plan reference. Metrics are recomputed from current records, not frozen historical totals.",
+    "estimated_values": "Execution records never overwrite a task or plan estimate."
+  },
+  "tables": {
+    "plans": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "title",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "start_date",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "end_date",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "priority",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "success_criteria",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "estimated_minutes",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "source_review_id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "improvement",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": "''",
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "updated_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 11,
+          "name": "deleted_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "reviews",
+          "from": "source_review_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "ddl": "CREATE TABLE plans (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  start_date TEXT NOT NULL,\n  end_date TEXT NOT NULL CHECK(end_date >= start_date),\n  priority INTEGER NOT NULL CHECK(priority BETWEEN 1 AND 3),\n  success_criteria TEXT NOT NULL,\n  estimated_minutes INTEGER NOT NULL CHECK(estimated_minutes >= 0),\n  source_review_id INTEGER REFERENCES reviews(id),\n  improvement TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  deleted_at TEXT\n)",
+      "indexes": [
+        {
+          "seq": 0,
+          "name": "one_next_plan_per_review",
+          "unique": 1,
+          "origin": "c",
+          "partial": 1
+        }
+      ]
+    },
+    "plan_versions": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "plan_id",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "version",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "snapshot_json",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "plans",
+          "from": "plan_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "ddl": "CREATE TABLE plan_versions (\n  id INTEGER PRIMARY KEY,\n  plan_id INTEGER NOT NULL REFERENCES plans(id),\n  version INTEGER NOT NULL,\n  snapshot_json TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  UNIQUE(plan_id, version)\n)",
+      "indexes": [
+        {
+          "seq": 0,
+          "name": "sqlite_autoindex_plan_versions_1",
+          "unique": 1,
+          "origin": "u",
+          "partial": 0
+        }
+      ]
+    },
+    "tasks": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "plan_id",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "title",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "due_date",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "priority",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "tags",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": "''",
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "estimated_minutes",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "completed",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": "0",
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "updated_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "deleted_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "plans",
+          "from": "plan_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "ddl": "CREATE TABLE tasks (\n  id INTEGER PRIMARY KEY,\n  plan_id INTEGER NOT NULL REFERENCES plans(id),\n  title TEXT NOT NULL,\n  due_date TEXT NOT NULL,\n  priority INTEGER NOT NULL CHECK(priority BETWEEN 1 AND 3),\n  tags TEXT NOT NULL DEFAULT '',\n  estimated_minutes INTEGER NOT NULL CHECK(estimated_minutes >= 0),\n  completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)),\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  deleted_at TEXT\n)",
+      "indexes": [
+        {
+          "seq": 0,
+          "name": "tasks_by_plan",
+          "unique": 0,
+          "origin": "c",
+          "partial": 0
+        }
+      ]
+    },
+    "completion_records": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "task_id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "completed_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "tasks",
+          "from": "task_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "ddl": "CREATE TABLE completion_records (\n  task_id INTEGER PRIMARY KEY REFERENCES tasks(id),\n  completed_at TEXT NOT NULL\n)",
+      "indexes": []
+    },
+    "executions": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "task_id",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "started_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "ended_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "actual_minutes",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "blocked_reason",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": "''",
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "idempotency_key",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "updated_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "deleted_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "tasks",
+          "from": "task_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "ddl": "CREATE TABLE executions (\n  id INTEGER PRIMARY KEY,\n  task_id INTEGER NOT NULL REFERENCES tasks(id),\n  started_at TEXT NOT NULL,\n  ended_at TEXT NOT NULL CHECK(ended_at >= started_at),\n  actual_minutes INTEGER NOT NULL CHECK(actual_minutes >= 0),\n  blocked_reason TEXT NOT NULL DEFAULT '',\n  idempotency_key TEXT NOT NULL UNIQUE,\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  deleted_at TEXT\n)",
+      "indexes": [
+        {
+          "seq": 0,
+          "name": "executions_by_task",
+          "unique": 0,
+          "origin": "c",
+          "partial": 0
+        },
+        {
+          "seq": 1,
+          "name": "sqlite_autoindex_executions_1",
+          "unique": 1,
+          "origin": "u",
+          "partial": 0
+        }
+      ]
+    },
+    "reviews": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "id",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "plan_id",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "from_date",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "to_date",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "reflection",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "improvement",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "updated_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "deleted_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "plans",
+          "from": "plan_id",
+          "to": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "ddl": "CREATE TABLE reviews (\n  id INTEGER PRIMARY KEY,\n  plan_id INTEGER NOT NULL REFERENCES plans(id),\n  from_date TEXT NOT NULL,\n  to_date TEXT NOT NULL CHECK(to_date >= from_date),\n  reflection TEXT NOT NULL,\n  improvement TEXT NOT NULL,\n  created_at TEXT NOT NULL,\n  updated_at TEXT NOT NULL,\n  deleted_at TEXT\n)",
+      "indexes": []
+    }
+  }
+}
