@@ -5,6 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const FORMAT = 'yeobaek-pds-browser-v1';
+  const planColors = Object.freeze({ cream: '크림', sky: '하늘', sage: '세이지', rose: '로즈' });
   const lists = ['plans', 'versions', 'tasks', 'executions', 'reviews', 'completions'];
   const clone = value => JSON.parse(JSON.stringify(value));
   function empty() { return { format: FORMAT, sequence: 0, plans: [], versions: [], tasks: [], executions: [], reviews: [], completions: [] }; }
@@ -49,7 +50,9 @@
   }
   function planValues(data) {
     const [start_date, end_date] = period(data);
-    return { title: text(data, 'title', 200), start_date, end_date, priority: integer(data.priority, 1, 3), success_criteria: text(data, 'success_criteria'), estimated_minutes: integer(data.estimated_minutes) };
+    const color = data.color ?? 'cream';
+    if (!Object.hasOwn(planColors, color)) fail('메모지 색을 선택해주세요.');
+    return { title: text(data, 'title', 200), start_date, end_date, color, priority: integer(data.priority, 1, 3), success_criteria: text(data, 'success_criteria', 2000, false), estimated_minutes: integer(data.estimated_minutes ?? 0) };
   }
   function apply(original, command, now = new Date().toISOString()) {
     const state = clone(original), d = command.data || {};
@@ -121,7 +124,7 @@
       if (prior) { if (prior.deleted_at) fail('이 회고로 만든 다음 계획은 삭제되었습니다. 새 계획을 등록해주세요.'); id = prior.id; }
       else {
         const [start_date, end_date] = period(d);
-        const plan = { id: nextId(state), title: text(d, 'title', 200), start_date, end_date, priority: previous.priority, success_criteria: previous.success_criteria, estimated_minutes: previous.estimated_minutes, source_review_id: review.id, improvement: review.improvement, created_at: now, updated_at: now, deleted_at: null };
+        const plan = { id: nextId(state), title: text(d, 'title', 200), start_date, end_date, color: previous.color ?? 'cream', priority: previous.priority, success_criteria: previous.success_criteria, estimated_minutes: previous.estimated_minutes, source_review_id: review.id, improvement: review.improvement, created_at: now, updated_at: now, deleted_at: null };
         state.plans.push(plan); snapshot(state, plan, now); id = plan.id;
       }
     } else if (command.type === 'delete') {
@@ -189,5 +192,5 @@
     }
     return state;
   }
-  return { FORMAT, empty, apply, validate, find, tasks, summary, today, date, localTime };
+  return { FORMAT, planColors, empty, apply, validate, find, tasks, summary, today, date, localTime };
 });

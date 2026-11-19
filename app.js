@@ -4,6 +4,7 @@ const today = new Date();
 let shown = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedKey = '';
 let store = { entries: {}, notes: {} };
+let calendarPlans = [];
 const $ = id => document.getElementById(id);
 const keyOf = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const monthKey = () => keyOf(shown).slice(0, 7);
@@ -52,7 +53,7 @@ function render() {
     cell.type = 'button';
     cell.className = `day${inMonth?'':' outside'}${isToday?' today':''}${index%7===0?' sunday':''}${index%7===6?' saturday':''}`;
     cell.dataset.date = key;
-    cell.setAttribute('aria-label', `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일${isToday?', 오늘':''}${entry?', 기록 있음':', 기록하기'}`);
+    cell.dataset.dayLabel = `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일${isToday?', 오늘':''}${entry?', 기록 있음':', 기록하기'}`;
     if (isToday) cell.setAttribute('aria-current','date');
     const number = document.createElement('span');
     number.className = 'day-number'; number.textContent = date.getDate(); cell.append(number);
@@ -66,7 +67,29 @@ function render() {
     fragment.append(cell);
   }
   $('days').replaceChildren(fragment);
+  renderPlanMarks();
   $('entryCount').textContent = `${count} DAYS RECORDED`;
+}
+function renderPlanMarks() {
+  for (const cell of $('days').querySelectorAll('.day')) {
+    const key = cell.dataset.date;
+    const matches = calendarPlans.filter(plan => plan.start_date <= key && key <= plan.end_date);
+    cell.querySelector('.calendar-plans')?.remove();
+    cell.setAttribute('aria-label', cell.dataset.dayLabel);
+    if (!matches.length) continue;
+    const marks = document.createElement('span');
+    marks.className = 'calendar-plans';
+    for (const plan of matches) {
+      const mark = document.createElement('span');
+      mark.className = 'plan-highlight plan-paper';
+      mark.dataset.color = plan.color;
+      mark.textContent = plan.title;
+      mark.title = plan.title;
+      marks.append(mark);
+    }
+    cell.append(marks);
+    cell.setAttribute('aria-label', `${cell.dataset.dayLabel}, ${matches.map(plan => plan.title).join(', ')}`);
+  }
 }
 function openEntry(key) {
   selectedKey = key;
@@ -227,6 +250,7 @@ function cleanupPaper(turn,commit) {
   turn.floating?.remove();
   book.classList.remove('turning','turn-held');
   pageTurn=null;
+  turn.updatePlans?.();
   $('turnStatus').textContent = commit?`${shown.getFullYear()}년 ${shown.getMonth()+1}월을 펼쳤어요.`:'아래 모서리를 꾹 누르고 안쪽으로 당겨보세요.';
 }
 for (const [id,direction] of [['turnPrevious',-1],['turnNext',1]]) {
@@ -272,3 +296,23 @@ window.addEventListener('blur',()=>{if(pageTurn && !pageTurn.settling) finishPap
 window.addEventListener('resize',()=>{if(pageTurn) cleanupPaper(pageTurn,false);});
 window.addEventListener('scroll',()=>{if(pageTurn?.active) positionFloating(pageTurn);},{capture:true,passive:true});
 render();
+if (window.PDSStorage) {
+  let planRead = 0;
+  async function refreshCalendarPlans() {
+    const request = ++planRead;
+    try {
+      const { state } = await window.PDSStorage.read();
+      if (request !== planRead) return;
+      calendarPlans = state.plans.filter(plan => !plan.deleted_at)
+        .sort((a, b) => a.priority - b.priority || a.id - b.id);
+      if (pageTurn) pageTurn.updatePlans = renderPlanMarks;
+      else renderPlanMarks();
+    } catch {
+      if (request === planRead) $('saveStatus').textContent = '계획 노트의 일정을 불러오지 못했어요.';
+    }
+  }
+  window.PDSStorage.channel?.addEventListener('message', refreshCalendarPlans);
+  window.addEventListener('pageshow', refreshCalendarPlans);
+  window.addEventListener('focus', refreshCalendarPlans);
+  refreshCalendarPlans();
+}

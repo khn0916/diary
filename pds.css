@@ -4,4 +4,23 @@
 @media(max-width:900px){.pds-workspace{padding:0 22px}.pds-paper{padding:25px 20px}.pds-nav{gap:12px;font-size:10px}.pds-workspace .brand-caption{display:none}.pds-two{grid-template-columns:1fr}.pds-filters .pds-field{min-width:120px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pds-heading h1{font-size:27px}}
 @media(max-width:480px){.pds-workspace .toolbar{height:auto;min-height:90px;align-items:flex-start;flex-direction:column;gap:12px;padding:18px 0}.pds-nav{flex-wrap:wrap}.pds-paper{padding:20px 14px}.pds-card{padding:16px}.pds-row{grid-template-columns:1fr;gap:0}.pds-filters{gap:12px}.pds-filters .pds-field{flex-basis:100%}.public-notice{font-size:11px;padding:12px}.pds-heading p{font-size:11px}.metric{padding:14px}}
 .empty-state .rabbit-emblem{display:block;width:88px;height:auto;margin:0 auto 8px}
+.pds-heading-row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px 18px}
+.pds-heading-row p{margin:0}
+.plan-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,225px),1fr));gap:24px;padding:20px 4px 32px}
+.plan-note{position:relative;display:flex;flex-direction:column;gap:12px;min-height:160px;padding:26px 17px 17px;background:var(--plan-paper);border:1px solid #68563529;border-radius:2px;box-shadow:1px 5px 9px #68563526;color:#554a3f}
+.plan-note::before{content:'';position:absolute;top:-8px;left:50%;width:48px;height:15px;transform:translateX(-50%) rotate(-4deg);background:#c5ab7359;pointer-events:none}
+.plan-note[aria-current="true"]{border-color:#9b8565}
+.plan-note strong{font-size:18px;overflow-wrap:anywhere}
+.plan-note span,.plan-note small{font-size:12px}
+.plan-composer{background:repeating-linear-gradient(transparent 0 23px,#6856350c 23px 24px),var(--plan-paper);border-radius:3px;max-height:calc(100% - 24px);overflow:auto}
+.plan-composer h2{margin:0 0 18px}
+.plan-composer .pds-field input,.plan-composer .pds-field select{background:#fffdf6b8}
+.plan-colors{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 16px;padding:0;border:0}
+.plan-colors legend{margin-bottom:8px;font-size:12px}
+.plan-colors label{display:flex;align-items:center;gap:5px;padding:6px 8px;background:var(--plan-paper);border:1px solid #68563538;border-radius:3px;font-size:12px;cursor:pointer}
+.plan-colors input{margin:0;accent-color:#76644c}
+.plan-colors label:has(:checked){border-color:#76644c}
+.plan-form-actions{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.plan-form-error{color:#803f38;font-size:12px}
+.plan-form-error:empty{display:none}
 
