@@ -71,24 +71,60 @@ function render() {
   $('entryCount').textContent = `${count} DAYS RECORDED`;
 }
 function renderPlanMarks() {
-  for (const cell of $('days').querySelectorAll('.day')) {
-    const key = cell.dataset.date;
-    const matches = calendarPlans.filter(plan => plan.start_date <= key && key <= plan.end_date);
-    cell.querySelector('.calendar-plans')?.remove();
-    cell.setAttribute('aria-label', cell.dataset.dayLabel);
-    if (!matches.length) continue;
-    const marks = document.createElement('span');
-    marks.className = 'calendar-plans';
-    for (const plan of matches) {
+  const grid = $('days');
+  const cells = Array.from(grid.querySelectorAll('.day'));
+  const dates = cells.map(cell => cell.dataset.date);
+  const dayPlans = cells.map(() => []);
+  const depth = cells.map(() => 0);
+  const visiblePlans = calendarPlans
+    .filter(plan => plan.end_date >= dates[0] && plan.start_date <= dates.at(-1))
+    .map(plan => ({
+      plan,
+      start: dates.findIndex(date => date >= plan.start_date),
+      end: dates.findLastIndex(date => date <= plan.end_date)
+    }));
+  const overlay = document.createElement('div');
+  overlay.className = 'calendar-plan-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+  for (let offset = 0; offset < cells.length; offset += 7) {
+    const week = document.createElement('div');
+    week.className = 'calendar-plan-week';
+    const lanes = [];
+    for (const { plan, start, end } of visiblePlans) {
+      if (end < offset || start > offset + 6) continue;
+      const first = Math.max(start, offset);
+      const last = Math.min(end, offset + 6);
+      // Each bit represents an occupied day column in this week.
+      const columns = ((1 << (last - first + 1)) - 1) << (first - offset);
+      let lane = lanes.findIndex(used => !(used & columns));
+      if (lane === -1) lane = lanes.length;
+      lanes[lane] = (lanes[lane] || 0) | columns;
+
       const mark = document.createElement('span');
       mark.className = 'plan-highlight plan-paper';
       mark.dataset.color = plan.color;
-      mark.textContent = plan.title;
-      mark.title = plan.title;
-      marks.append(mark);
+      mark.classList.toggle('plan-start', dates[first] === plan.start_date);
+      mark.classList.toggle('plan-end', dates[last] === plan.end_date);
+      mark.style.gridColumn = `${first - offset + 1} / ${last - offset + 2}`;
+      mark.style.gridRow = String(lane + 1);
+      if (first === start) mark.textContent = plan.title;
+      week.append(mark);
+
+      for (let index = first; index <= last; index++) {
+        dayPlans[index].push(plan.title);
+        depth[index] = Math.max(depth[index], lane + 1);
+      }
     }
-    cell.append(marks);
-    cell.setAttribute('aria-label', `${cell.dataset.dayLabel}, ${matches.map(plan => plan.title).join(', ')}`);
+    overlay.append(week);
+  }
+  grid.querySelector('.calendar-plan-overlay')?.remove();
+  if (dayPlans.some(plans => plans.length)) grid.append(overlay);
+  const maxLanes = Math.max(0, ...depth);
+  if (maxLanes > 1) grid.style.setProperty('--plan-min-height', `calc(28px + ${maxLanes} * (var(--plan-row-height) + 2px))`);
+  else grid.style.removeProperty('--plan-min-height');
+  for (const [index, cell] of cells.entries()) {
+    cell.setAttribute('aria-label', [cell.dataset.dayLabel, ...dayPlans[index]].join(', '));
+    cell.style.setProperty('--plan-lanes', depth[index]);
   }
 }
 function openEntry(key) {

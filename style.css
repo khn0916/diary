@@ -24,6 +24,11 @@
 .plan-paper[data-color="sky"]{--plan-paper:#e4edf5;--plan-marker:#cbdff1}
 .plan-paper[data-color="sage"]{--plan-paper:#e5eddb;--plan-marker:#d0e2bf}
 .plan-paper[data-color="rose"]{--plan-paper:#f3e1e4;--plan-marker:#ebcbd4}
-.calendar-plans{display:grid;gap:2px;width:100%;min-height:17px;overflow:auto;scrollbar-width:thin}
-.plan-highlight{display:block;min-width:0;padding:1px 3px;color:#51483b;font-size:11px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(178deg,transparent 12%,var(--plan-marker) 13% 90%,transparent 91%);border-radius:2px 4px 3px 2px}
-.day:has(.calendar-plans) .day-content{-webkit-line-clamp:1;flex-shrink:0}
+.days{position:relative;--plan-row-height:15px}
+.calendar-plan-overlay{position:absolute;inset:0;display:grid;grid-template-rows:repeat(6,minmax(0,1fr));pointer-events:none}
+.calendar-plan-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:var(--plan-row-height);padding-top:28px;gap:2px 0;overflow:hidden}
+.plan-highlight{min-width:0;padding:0 6px;color:#51483b;font-size:11px;line-height:var(--plan-row-height);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--plan-marker);clip-path:polygon(0 13%,99% 5%,100% 10%,100% 88%,1% 96%,0 88%)}
+.plan-highlight.plan-start{margin-left:8px;border-radius:4px 0 0 3px}
+.plan-highlight.plan-end{margin-right:8px;border-radius:0 3px 4px 0}
+.plan-highlight.plan-start.plan-end{border-radius:4px 3px 4px 3px}
+.day-content{margin-top:max(0px,calc(var(--plan-lanes,0) * (var(--plan-row-height) + 2px) - 7px))}
