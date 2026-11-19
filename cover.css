@@ -44,7 +44,7 @@ body.diary-closed,body.diary-opening{overflow:hidden}
 @keyframes cover-leaf-shade{0%,100%{opacity:0}50%{opacity:1}}
 @keyframes cover-scene-clear{0%,48%{opacity:1}100%{opacity:0}}
 .diary-open[hidden]{display:none}
-.diary-open{min-height:100svh;display:flex;flex-direction:column;opacity:1;transition:opacity .65s ease,filter .65s ease}
+.diary-open{width:100%;max-width:1240px;padding-inline:clamp(22px,4vw,48px);min-height:100svh;display:flex;flex-direction:column;opacity:1;transition:opacity .65s ease,filter .65s ease}
 .diary-open.is-revealing{opacity:0;filter:blur(3px)}
 .diary-open>.toolbar{height:clamp(72px,9svh,104px);flex-shrink:0}
 .diary-open>main{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
@@ -64,7 +64,9 @@ body.diary-closed,body.diary-opening{overflow:hidden}
 .diary-open .notes-bottom>span:last-child{margin-top:10px}
 .diary-open .book-footer{margin-top:12px}
 .diary-open .desk-footer{padding-top:2px;padding-bottom:12px}
-.tools #closeDiary{border-color:#b8b9a2;color:#78805c}
+/* The lifted sheet lives outside the scrolling book viewport so its tip is visible. */
+.turn-floating.diary-open{position:fixed;z-index:10;display:block;min-height:0;max-width:none;margin:0;padding:0;overflow:visible;pointer-events:none;transition:none;filter:none;isolation:isolate}
 @media(max-width:800px){:root{--cover-width:clamp(230px,63vw,310px)}.cover-scene{gap:22px}.cover-scene-brand{font-size:20px}.cover-scene-brand span{font-size:7px;letter-spacing:1.4px}.cover-invitation{font-size:12px;letter-spacing:.3px}.cover-front{padding-left:27px;padding-right:25px}.cover-title{font-size:11px;letter-spacing:1.5px}.cover-bottom,.cover-colophon{left:27px;right:25px}.cover-year{font-size:11px}.diary-open .mobile-hint{margin:0 0 8px;font-size:10px}.diary-open .book-heading{height:108px}.diary-open .days{grid-template-rows:repeat(6,80px)}.diary-open .book-viewport{max-height:none}.diary-open .tools{max-width:240px;gap:7px 10px}.diary-open .tools button{padding:7px 10px}.diary-open .brand-caption{display:none}.diary-open>main{padding-top:12px}.diary-open .desk-footer{line-height:1.8}}
 @media(max-height:650px) and (min-width:801px){:root{--cover-width:230px}.cover-scene{gap:12px}.cover-invitation{margin-top:10px}.diary-open .notes-bottom .sprout{font-size:25px}.diary-open .notes-bottom p{margin:4px 0}.diary-open .handwriting{font-size:17px}}
+@media(max-width:800px){.diary-open .book:not(.turn-copy){min-width:860px}}
 @media(prefers-reduced-motion:reduce){.cover-scene,.cover-object,.diary-open{transition:none}.is-opening .cover-front,.is-opening .cover-back,.is-opening .cover-opening-leaf,.is-opening::before,.is-opening .cover-opening-leaf::after{animation:none}}

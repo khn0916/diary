@@ -3,20 +3,21 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 class Element {
-  constructor(){this.events={};this.style={setProperty(){}};this.classList={add(){},remove(){}};}
+  constructor(){this.events={};this.style={setProperty(){}};this.classList={add(){},remove(){}};this.children=[];}
   addEventListener(type,handler){this.events[type]=handler;}
   getBoundingClientRect(){return {left:0,top:0,width:1000,height:800};}
   cloneNode(){return new Element();}
   querySelectorAll(){return [];}
-  removeAttribute(){} setAttribute(){} append(){} remove(){} setPointerCapture(){}
+  removeAttribute(){} setAttribute(){} append(...children){for(const child of children){child.parent=this;this.children.push(child);}} remove(){this.removed=true;} setPointerCapture(){}
 }
 const elements = Object.fromEntries(['turnPrevious','turnNext','turnStatus'].map(id=>[id,new Element()]));
 const book = new Element();
+const body = new Element();
 const timers=new Map(),frames=new Map();
 let sequence=0,clock=0;
 const context=vm.createContext({
   console,Date,Math,shown:new Date(2026,10,1),render(){},$:id=>elements[id],
-  document:{querySelector:()=>book,createElement:()=>new Element(),addEventListener(){}},
+  document:{body,querySelector:()=>book,createElement:()=>new Element(),addEventListener(){}},
   window:{addEventListener(){}},performance:{now:()=>clock},matchMedia:()=>({matches:false}),
   setTimeout:fn=>{const id=++sequence;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   requestAnimationFrame:fn=>{const id=++sequence;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id)
@@ -42,4 +43,15 @@ event('turnNext','pointerdown',985);hold();event('turnNext','pointermove',400,60
 // Rapid secondary gestures cannot replace an active turn.
 event('turnNext','pointerdown',985);const active=read('pageTurn');event('turnPrevious','pointerdown',15);assert.equal(read('pageTurn'),active);event('turnNext','pointercancel',985);settle();
 assert.equal(timers.size,0);assert.equal(frames.size,0);
-console.log('PASS: held/quick drag, both directions, short-drag rollback, tap, pointer cancellation, lost capture, explicit cancellation, year boundary, duplicate gestures, timer/frame cleanup.');
+// A low, inward pull lifts the top of the reflected sheet above the book.
+// The lifted sheet must be attached to the body, not to a clipping viewport.
+event('turnNext','pointerdown',985);hold();event('turnNext','pointermove',500,760);
+const floating=read('pageTurn.floating');
+assert.equal(floating.parent,body);
+assert.equal(read('pageTurn.back.parent'),floating);
+assert.equal(read('pageTurn.shade.style.transform'),read('pageTurn.back.style.transform'));
+const reflection=read('pageTurn.back.style.transform').slice(7,-1).split(',').map(Number);
+assert(reflection[1]*1000+reflection[5]<0,'the lifted top corner must extend above the book');
+event('turnNext','pointercancel',500,760);settle();assert(floating.removed,'cancel must remove the floating sheet');
+assert(body.children.every(child=>child.removed),'no floating overlays may remain after turns');
+console.log('PASS: held/quick drag, both directions, rollback/cancellation, year boundary, duplicate gestures, complete lifted top corner outside clipping containers, floating-layer cleanup.');

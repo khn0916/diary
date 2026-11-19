@@ -11,7 +11,7 @@ function element() {
   };
 }
 function setup(reduced = false) {
-  const ids = Object.fromEntries(['coverScene', 'diaryWorkspace', 'openDiary', 'closeDiary', 'coverYear', 'todayButton', 'monthTitle'].map(id => [id, element()]));
+  const ids = Object.fromEntries(['coverScene', 'diaryWorkspace', 'openDiary', 'coverYear', 'todayButton', 'monthTitle'].map(id => [id, element()]));
   ids.diaryWorkspace.hidden = true;
   let month = 12, turning = false;
   ids.todayButton.events.click = () => { month = 11; };
@@ -47,13 +47,8 @@ assert(!normal.ids.diaryWorkspace.inert);
 assert(normal.ids.monthTitle.focused);
 assert.equal(normal.viewport.scrollLeft, 300);
 assert.equal(normal.timers.size, 0);
-normal.turning(true); normal.ids.closeDiary.click(); assert.equal(normal.ids.diaryWorkspace.hidden, false);
-normal.turning(false); normal.ids.closeDiary.click();
-assert(normal.ids.diaryWorkspace.hidden && normal.ids.diaryWorkspace.inert);
-assert(!normal.ids.coverScene.hidden);
-assert(normal.ids.openDiary.focused);
-normal.ids.openDiary.click(); normal.tick(1750);
-assert(normal.ids.coverScene.hidden, 'reopening must complete');
+assert(!fs.readFileSync(`${__dirname}/index.html`, 'utf8').includes('closeDiary'));
+assert(!fs.readFileSync(`${__dirname}/cover.js`, 'utf8').includes('closeDiary'));
 const reduced = setup(true); reduced.ids.openDiary.click();
 assert(reduced.ids.coverScene.hidden);
 assert.equal(reduced.timers.size, 0);
@@ -61,4 +56,4 @@ assert(!reduced.ids.diaryWorkspace.inert);
 const changed = setup(); changed.ids.openDiary.click(); changed.motion.matches = true; changed.motion.change();
 assert(changed.ids.coverScene.hidden);
 assert.equal(changed.timers.size, 0);
-console.log('PASS: closed entry, current month, stagger lifecycle, duplicate activation, centered monthly, close/reopen, focus, reduced motion and timer cleanup.');
+console.log('PASS: closed entry, current month, stagger lifecycle, duplicate activation, centered monthly, no return-to-cover feature, focus, reduced motion and timer cleanup.');

@@ -151,16 +151,33 @@ function liftPaper(turn) {
   turn.stage = document.createElement('div');
   turn.stage.className = 'turn-stage';
   turn.stage.setAttribute('aria-hidden','true');
-  turn.stage.append(turn.stationary,turn.front,turn.back,turn.shade);
+  turn.stage.append(turn.stationary,turn.front);
+  // Keep the flat sheet clipped to the book. Lift the folded sheet into a fixed
+  // layer outside both overflow containers so its upper tip is never cut off.
+  turn.floating = document.createElement('div');
+  turn.floating.className = 'diary-open turn-floating';
+  turn.floating.inert = true;
+  turn.floating.setAttribute('aria-hidden','true');
+  turn.floating.append(turn.back,turn.shade);
+  positionFloating(turn);
   turn.stationary.style.clipPath = turn.direction === 1 ? 'inset(0 50% 0 0)' : 'inset(0 0 0 50%)';
   shown = new Date(turn.original.getFullYear(),turn.original.getMonth()+turn.direction,1);
   render();
   book.append(turn.stage);
+  document.body.append(turn.floating);
   book.classList.add('turning');
   $('turnStatus').textContent = '안쪽으로 당긴 뒤 놓아 페이지를 넘기세요.';
   drawPaper(turn,turn.x,turn.y);
 }
+function positionFloating(turn) {
+  const rect=book.getBoundingClientRect();
+  turn.floating.style.left=`${rect.left}px`;
+  turn.floating.style.top=`${rect.top}px`;
+  turn.floating.style.width=`${turn.width}px`;
+  turn.floating.style.height=`${turn.height}px`;
+}
 function drawPaper(turn,x,y) {
+  positionFloating(turn);
   const {width:w,height:h} = turn;
   const cx = turn.direction === 1 ? w : 0;
   x = Math.max(0,Math.min(w,x));
@@ -177,9 +194,10 @@ function drawPaper(turn,x,y) {
   const a=1-2*n.x*n.x,b=-2*n.x*n.y,d=1-2*n.y*n.y;
   const projection = 2*(n.x*m.x+n.y*m.y);
   const tx=n.x*projection,ty=n.y*projection;
-  turn.back.style.transform = `matrix(${a},${b},${b},${d},${tx},${ty})`;
-  const reflected = flap.map(p=>({x:a*p.x+b*p.y+tx,y:b*p.x+d*p.y+ty}));
-  turn.shade.style.clipPath = polygon(reflected);
+  const reflection=`matrix(${a},${b},${b},${d},${tx},${ty})`;
+  turn.back.style.transform = reflection;
+  turn.shade.style.clipPath = polygon(flap);
+  turn.shade.style.transform = reflection;
   turn.shade.style.setProperty('--crease-angle',`${Math.atan2(n.y,n.x)*180/Math.PI+90}deg`);
 }
 function finishPaper(commit) {
@@ -206,6 +224,7 @@ function cleanupPaper(turn,commit) {
   cancelAnimationFrame(turn.frame);
   if (!commit) { shown = turn.original; render(); }
   turn.stage?.remove();
+  turn.floating?.remove();
   book.classList.remove('turning','turn-held');
   pageTurn=null;
   $('turnStatus').textContent = commit?`${shown.getFullYear()}년 ${shown.getMonth()+1}월을 펼쳤어요.`:'아래 모서리를 꾹 누르고 안쪽으로 당겨보세요.';
@@ -251,4 +270,5 @@ for (const [id,direction] of [['turnPrevious',-1],['turnNext',1]]) {
 document.addEventListener('keydown',event=>{if(event.key==='Escape' && pageTurn && !pageTurn.settling) finishPaper(false);});
 window.addEventListener('blur',()=>{if(pageTurn && !pageTurn.settling) finishPaper(false);});
 window.addEventListener('resize',()=>{if(pageTurn) cleanupPaper(pageTurn,false);});
+window.addEventListener('scroll',()=>{if(pageTurn?.active) positionFloating(pageTurn);},{capture:true,passive:true});
 render();

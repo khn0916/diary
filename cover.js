@@ -3,7 +3,6 @@
   const scene = document.getElementById('coverScene');
   const workspace = document.getElementById('diaryWorkspace');
   const openButton = document.getElementById('openDiary');
-  const closeButton = document.getElementById('closeDiary');
   const year = document.getElementById('coverYear');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let opening = false, revealTimer, finishTimer;
@@ -49,18 +48,8 @@
     }, 1050);
     finishTimer = setTimeout(finishOpening, 1750);
   }
-  function close() {
-    if (opening || workspace.querySelector('.book.turning,.book.turn-held')) return;
-    scene.hidden = false;
-    workspace.hidden = true; workspace.inert = true;
-    document.body.classList.add('diary-closed');
-    updateYear();
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    openButton.focus({ preventScroll: true });
-  }
   workspace.inert = true;
   updateYear();
   openButton.addEventListener('click', open);
-  closeButton.addEventListener('click', close);
   reducedMotion.addEventListener('change', () => { if (opening && reducedMotion.matches) finishOpening(); });
 })();
