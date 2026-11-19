@@ -5,6 +5,7 @@ let shown = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedKey = '';
 let store = { entries: {}, notes: {} };
 let calendarPlans = [];
+const previewSegments = new Intl.Segmenter('ko', { granularity: 'grapheme' });
 const $ = id => document.getElementById(id);
 const keyOf = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const monthKey = () => keyOf(shown).slice(0, 7);
@@ -62,7 +63,9 @@ function render() {
     }
     if (isToday) { const tag = document.createElement('span'); tag.className = 'today-tag'; tag.textContent = 'TODAY'; cell.append(tag); }
     if (entry && typeof entry.text === 'string') {
-      const content = document.createElement('span'); content.className = 'day-content'; content.textContent = entry.text; cell.append(content);
+      const content = document.createElement('span');
+      content.className = 'day-content';
+      if (entry.text.trim()) cell.append(content);
     }
     fragment.append(cell);
   }
@@ -119,12 +122,32 @@ function renderPlanMarks() {
   }
   grid.querySelector('.calendar-plan-overlay')?.remove();
   if (dayPlans.some(plans => plans.length)) grid.append(overlay);
-  const maxLanes = Math.max(0, ...depth);
-  if (maxLanes > 1) grid.style.setProperty('--plan-min-height', `calc(28px + ${maxLanes} * (var(--plan-row-height) + 2px))`);
-  else grid.style.removeProperty('--plan-min-height');
   for (const [index, cell] of cells.entries()) {
     cell.setAttribute('aria-label', [cell.dataset.dayLabel, ...dayPlans[index]].join(', '));
     cell.style.setProperty('--plan-lanes', depth[index]);
+  }
+  const maxLanes = Math.max(0, ...depth);
+  const previewDepth = Math.max(-1, ...depth.filter((_, index) => cells[index].querySelector('.day-content')));
+  const previewHeight = previewDepth < 0 ? '0px' : `calc(66px + ${previewDepth} * var(--plan-step))`;
+  grid.style.setProperty('--plan-min-height', `max(calc(var(--plan-top) + ${maxLanes} * var(--plan-step)), ${previewHeight})`);
+  renderEntryPreviews();
+}
+function renderEntryPreviews() {
+  for (const preview of $('days').querySelectorAll('.day-content')) {
+    const text = store.entries[preview.closest('.day').dataset.date]?.text ?? '';
+    preview.textContent = text;
+    if (!preview.clientHeight || preview.scrollHeight <= preview.clientHeight) continue;
+
+    const parts = Array.from(previewSegments.segment(text), part => part.index);
+    let low = 0, high = parts.length - 1;
+    const withDots = count => text.slice(0, parts[count]).trimEnd() + '···';
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      preview.textContent = withDots(middle);
+      if (preview.scrollHeight <= preview.clientHeight) low = middle;
+      else high = middle - 1;
+    }
+    preview.textContent = withDots(low);
   }
 }
 function openEntry(key) {
@@ -332,6 +355,13 @@ window.addEventListener('blur',()=>{if(pageTurn && !pageTurn.settling) finishPap
 window.addEventListener('resize',()=>{if(pageTurn) cleanupPaper(pageTurn,false);});
 window.addEventListener('scroll',()=>{if(pageTurn?.active) positionFloating(pageTurn);},{capture:true,passive:true});
 render();
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(() => {
+    if (pageTurn) pageTurn.updatePlans = renderPlanMarks;
+    else renderEntryPreviews();
+  }).observe($('days'));
+  document.fonts?.ready.then(renderEntryPreviews);
+}
 if (window.PDSStorage) {
   let planRead = 0;
   async function refreshCalendarPlans() {
