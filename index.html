@@ -38,7 +38,7 @@
   </section>
   <div class="workspace diary-open" id="diaryWorkspace" hidden>
     <header class="toolbar">
-      <a class="brand" href="./"><span class="brand-mark">▤</span> 여백 <span class="brand-caption">나의 작은 다이어리</span></a>
+      <a class="brand" href="./"><span class="brand-mark">▤</span><span class="brand-lockup"><span class="brand-name">여백</span><span class="brand-caption">나의 작은 다이어리</span></span></a>
       <div class="tools"><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">이 브라우저에 기록됩니다</span><button id="todayButton">오늘로</button></div>
     </header>
     <main>
@@ -49,10 +49,10 @@
           <div class="ribbon" aria-hidden="true"></div>
           <header class="book-heading">
             <div class="month-heading"><div class="eyebrow" id="monthEnglish"></div><div class="month-line"><h1 id="monthTitle"></h1><span class="small-flower" aria-hidden="true">✳</span></div><p>평범한 하루도, 소중한 한 페이지.</p></div>
-            <div class="heading-right"><span class="handwriting">작은 순간들을 모아<br>나만의 계절을 만들어요.</span><div class="month-nav"><button id="previousMonth" aria-label="이전 달">←</button><span id="navDate"></span><button id="nextMonth" aria-label="다음 달">→</button></div></div>
+            <div class="heading-right"><div class="month-nav"><button id="previousMonth" aria-label="이전 달">←</button><span id="navDate"></span><button id="nextMonth" aria-label="다음 달">→</button></div></div>
           </header>
           <div class="planner">
-            <aside class="notes"><h2>THIS MONTH</h2><label for="monthlyNote">이번 달의 마음</label><textarea id="monthlyNote" placeholder="이번 달에는 어떤 날들을 보내고 싶나요?" aria-label="이번 달의 마음"></textarea><div class="notes-bottom"><span class="sprout" aria-hidden="true">❧</span><p>빈칸이 있어도 괜찮아.<br>내일 또 채워가면 되니까.</p><span id="entryCount"></span></div></aside>
+            <aside class="notes"><h2>THIS MONTH</h2><label for="monthlyNote">이번 달의 마음</label><textarea id="monthlyNote" placeholder="이번 달에는 어떤 날들을 보내고 싶나요?" aria-label="이번 달의 마음"></textarea><div class="notes-bottom"><img class="rabbit-emblem" src="assets/rabbit-flowers.svg" alt="" aria-hidden="true" width="140" height="166"><span id="entryCount"></span></div></aside>
             <div class="calendar"><div class="weekdays" aria-hidden="true"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div><div id="days" class="days" aria-label="날짜를 선택하여 기록하기"></div></div>
           </div>
           <footer class="book-footer"><span>MEMORIES, ONE DAY AT A TIME.</span><span id="pageNumber"></span><span>소소한 날들의 기록</span></footer>

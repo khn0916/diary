@@ -64,9 +64,18 @@ body.diary-closed,body.diary-opening{overflow:hidden}
 .diary-open .notes-bottom>span:last-child{margin-top:10px}
 .diary-open .book-footer{margin-top:12px}
 .diary-open .desk-footer{padding-top:2px;padding-bottom:12px}
+/* Monthly editorial details: brand subtitle, lower navigation, olive line art. */
+.diary-open .brand-lockup{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.diary-open .brand-name{line-height:1;letter-spacing:3px}
+.diary-open .brand-caption{display:block;margin-left:9px;white-space:nowrap;font-size:11px;line-height:1.2;font-weight:400;letter-spacing:0}
+.diary-open .book-heading{position:relative}
+.diary-open .heading-right{position:absolute;right:8px;bottom:7px;width:auto;padding:0}
+.diary-open .month-nav{padding-top:0}
+.rabbit-emblem{display:block;width:76px;max-width:100%;height:auto;margin:5px 0 10px}
 /* The lifted sheet lives outside the scrolling book viewport so its tip is visible. */
 .turn-floating.diary-open{position:fixed;z-index:10;display:block;min-height:0;max-width:none;margin:0;padding:0;overflow:visible;pointer-events:none;transition:none;filter:none;isolation:isolate}
 @media(max-width:800px){:root{--cover-width:clamp(230px,63vw,310px)}.cover-scene{gap:22px}.cover-scene-brand{font-size:20px}.cover-scene-brand span{font-size:7px;letter-spacing:1.4px}.cover-invitation{font-size:12px;letter-spacing:.3px}.cover-front{padding-left:27px;padding-right:25px}.cover-title{font-size:11px;letter-spacing:1.5px}.cover-bottom,.cover-colophon{left:27px;right:25px}.cover-year{font-size:11px}.diary-open .mobile-hint{margin:0 0 8px;font-size:10px}.diary-open .book-heading{height:108px}.diary-open .days{grid-template-rows:repeat(6,80px)}.diary-open .book-viewport{max-height:none}.diary-open .tools{max-width:240px;gap:7px 10px}.diary-open .tools button{padding:7px 10px}.diary-open .brand-caption{display:none}.diary-open>main{padding-top:12px}.diary-open .desk-footer{line-height:1.8}}
 @media(max-height:650px) and (min-width:801px){:root{--cover-width:230px}.cover-scene{gap:12px}.cover-invitation{margin-top:10px}.diary-open .notes-bottom .sprout{font-size:25px}.diary-open .notes-bottom p{margin:4px 0}.diary-open .handwriting{font-size:17px}}
 @media(max-width:800px){.diary-open .book:not(.turn-copy){min-width:860px}}
+@media(max-width:800px){.diary-open .brand-caption{display:block;font-size:10px;margin-left:6px}.diary-open .brand-lockup{gap:5px}.diary-open .tools{max-width:190px}.diary-open .heading-right{padding:0}.diary-open .month-nav{padding-top:0}}
 @media(prefers-reduced-motion:reduce){.cover-scene,.cover-object,.diary-open{transition:none}.is-opening .cover-front,.is-opening .cover-back,.is-opening .cover-opening-leaf,.is-opening::before,.is-opening .cover-opening-leaf::after{animation:none}}
