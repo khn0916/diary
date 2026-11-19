@@ -54,7 +54,7 @@ def delete_form(kind, record_id, token, plan_id, task_id=''):
 
 def layout(title, content, status=200):
     return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{e(title)} · 여백 Plan–Do–See</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/pds.css"></head>
+<title>{e(title)} · 여백 Plan–Do–See</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/pds.css?v=2"></head>
 <body><div class="workspace pds-workspace"><header class="toolbar"><a class="brand" href="/">▤ 여백 <span class="brand-caption">나의 작은 다이어리</span></a>
 <nav class="pds-nav"><a href="/">종이 다이어리</a><a href="/pds">계획 · 실행 · 회고</a><a href="/pds/export">전체 기록 내보내기 ↓</a></nav></header>
 <p class="public-notice" role="note">{NOTICE}</p><main class="pds-paper"><header class="pds-heading"><span class="eyebrow">PLAN · DO · SEE</span><h1>{e(title)}</h1><p>계획을 세우고, 하루를 실행하고, 다음 페이지에 배움을 남겨요.</p></header>
@@ -88,7 +88,7 @@ def dashboard(diary, query, token):
         plan_id = str(plans[0]['id'])
     new_plan = '<details class="pds-card" '+('open' if not plans else '')+'><summary>새 계획 등록</summary>'+form('/pds/plan', token, plan_fields(), '계획 등록하기')+'</details>'
     if not plan_id:
-        return layout('나의 계획 노트', '<div class="empty-state"><span>❧</span><h2>첫 계획을 기다리고 있어요.</h2><p>예시 기록은 넣지 않았습니다. 공개해도 괜찮은 실제 계획을 등록해주세요.</p></div>'+new_plan)
+        return layout('나의 계획 노트', '<div class="empty-state"><img class="rabbit-emblem" src="/assets/rabbit-flowers.svg?v=4" alt="" aria-hidden="true" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2><p>예시 기록은 넣지 않았습니다. 공개해도 괜찮은 실제 계획을 등록해주세요.</p></div>'+new_plan)
     plan, versions, reviews = diary.details(int(plan_id))
     plan_id = plan['id']
     start, end = query.get('from', ''), query.get('to', '')
@@ -176,3 +176,4 @@ def task_page(diary, task_id, token):
         records += f'<article class="history-item" id="execution-{r["id"]}"><h3>실행 #{r["id"]} · {r["actual_minutes"]}분</h3><p>{e(display_time(r["started_at"]))} → {e(display_time(r["ended_at"]))} (서울)</p><p class="preserve-lines">막힘 사유: {e(r["blocked_reason"] or "없음")}</p><details><summary>실행 기록 수정</summary>'+form('/pds/execution',token,execution_fields(task_id,r),'실행 수정')+'</details>'+delete_form('execution',r['id'],token,plan_id,task_id)+'</article>'
     body = f'<a href="{link("/pds",plan=plan_id)}#evidence">← 계획 #{plan_id}의 근거 기록으로</a><section class="pds-card"><h2>할 일 #{task_id} · {e(task["title"])}</h2><p>예상 {task["estimated_minutes"]}분 · 실제 합계 {sum(r["actual_minutes"] for r in executions)}분 · 연결 계획 #{plan_id}</p>'+form('/pds/task',token,task_fields(plan_id,task),'할 일 수정')+delete_form('task',task_id,token,plan_id)+'</section><div class="pds-two"><section class="pds-card"><h2>실제 실행 기록하기</h2>'+form('/pds/execution',token,execution_fields(task_id),'실행 기록 저장')+'</section><section class="pds-card"><h2>연결된 실행 기록</h2>'+(records or '<p class="subtle">아직 실행 기록이 없습니다.</p>')+'</section></div>'
     return layout('실행 노트',body)
+
