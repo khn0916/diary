@@ -122,18 +122,24 @@ function renderPlanMarks() {
   }
   grid.querySelector('.calendar-plan-overlay')?.remove();
   if (dayPlans.some(plans => plans.length)) grid.append(overlay);
+  let previewDepth = -1;
   for (const [index, cell] of cells.entries()) {
-    cell.setAttribute('aria-label', [cell.dataset.dayLabel, ...dayPlans[index]].join(', '));
+    const plans = dayPlans[index];
+    cell.setAttribute('aria-label', [cell.dataset.dayLabel, ...plans].join(', '));
     cell.style.setProperty('--plan-lanes', depth[index]);
+    const preview = cell.querySelector('.day-content');
+    if (preview) {
+      preview.hidden = plans.length >= 2;
+      if (!preview.hidden) previewDepth = Math.max(previewDepth, depth[index]);
+    }
   }
   const maxLanes = Math.max(0, ...depth);
-  const previewDepth = Math.max(-1, ...depth.filter((_, index) => cells[index].querySelector('.day-content')));
   const previewHeight = previewDepth < 0 ? '0px' : `calc(66px + ${previewDepth} * var(--plan-step))`;
   grid.style.setProperty('--plan-min-height', `max(calc(var(--plan-top) + ${maxLanes} * var(--plan-step)), ${previewHeight})`);
   renderEntryPreviews();
 }
 function renderEntryPreviews() {
-  for (const preview of $('days').querySelectorAll('.day-content')) {
+  for (const preview of $('days').querySelectorAll('.day-content:not([hidden])')) {
     const text = store.entries[preview.closest('.day').dataset.date]?.text ?? '';
     preview.textContent = text;
     if (!preview.clientHeight || preview.scrollHeight <= preview.clientHeight) continue;
