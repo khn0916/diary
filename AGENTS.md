@@ -7,6 +7,7 @@
 - Website hosting and deployment require a separate user request. Do not configure or trigger deployment during ordinary development or repository synchronization.
 - Preserve the warm beige paper diary design, equal calendar cells, center fold, and draggable page corners.
 - Verify JavaScript changes with `node --check app.js` and page-turn changes with `node verify-turn.cjs`.
+- Closed-cover entry lives in `cover.css` and `cover.js`; verify changes with `node --check cover.js` and `node test-cover.cjs`. Keep current-month opening, focus handling, reduced-motion behavior and monthly centering.
 - Default PDS is now static `pds/index.html` on GitHub Pages, using IndexedDB and JavaScript. The paper diary keeps its design and features with an added navigation link.
 - Verify static changes with `node test-browser-model.cjs`, `node --check pds-model.js`, `node --check pds-storage.js`, and `node --check pds-web.js`.
 - Python PDS is retained as an optional implementation: run `python server.py`; `/pds` serves the Python screen, `/pds/index.html` serves the static version.

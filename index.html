@@ -7,13 +7,39 @@
   <title>여백 — 나의 작은 다이어리</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="diary-navigation.css">
+  <link rel="stylesheet" href="cover.css">
   <script src="app.js" defer></script>
+  <script src="cover.js" defer></script>
 </head>
-<body>
-  <div class="workspace">
+<body class="diary-closed">
+  <section class="cover-scene" id="coverScene" aria-labelledby="coverSceneTitle">
+    <div class="cover-scene-brand" id="coverSceneTitle">여백 <span>A LITTLE ROOM FOR YOUR DAY</span></div>
+    <div class="cover-presentation">
+      <div class="cover-ground-shadow" aria-hidden="true"></div>
+      <button class="cover-object" id="openDiary" aria-label="다이어리 표지를 열고 이번 달 보기">
+        <span class="cover-back" aria-hidden="true"></span>
+        <span class="cover-page-block" aria-hidden="true"></span>
+        <span class="cover-opening-leaf" style="--leaf:5" aria-hidden="true"></span>
+        <span class="cover-opening-leaf" style="--leaf:4" aria-hidden="true"></span>
+        <span class="cover-opening-leaf" style="--leaf:3" aria-hidden="true"></span>
+        <span class="cover-opening-leaf" style="--leaf:2" aria-hidden="true"></span>
+        <span class="cover-opening-leaf" style="--leaf:1" aria-hidden="true"></span>
+        <span class="cover-opening-leaf" style="--leaf:0" aria-hidden="true"></span>
+        <span class="cover-front" aria-hidden="true">
+          <span class="cover-title">THE QUIET DAYS</span>
+          <span class="cover-subtitle">A place for plans, little moments,<br>and everything in between.</span>
+          <span class="cover-bottom"><span class="cover-owner">나의 속도로,<br>나의 하루를.</span><span class="cover-year" id="coverYear"></span></span>
+          <span class="cover-colophon"><span>여백 · 日記</span><span>MY EVERYDAY JOURNAL</span></span>
+        </span>
+      </button>
+    </div>
+    <p class="cover-invitation" id="coverInvitation">표지를 눌러, 오늘의 페이지를 펼쳐보세요.</p>
+    <span class="cover-scene-footer" aria-hidden="true">YOUR DAYS, AT YOUR OWN PACE.</span>
+  </section>
+  <div class="workspace diary-open" id="diaryWorkspace" hidden>
     <header class="toolbar">
       <a class="brand" href="./"><span class="brand-mark">▤</span> 여백 <span class="brand-caption">나의 작은 다이어리</span></a>
-      <div class="tools"><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">이 브라우저에 기록됩니다</span><button id="todayButton">오늘로</button></div>
+      <div class="tools"><button id="closeDiary" type="button" aria-label="다이어리를 닫고 표지로 돌아가기">표지</button><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">이 브라우저에 기록됩니다</span><button id="todayButton">오늘로</button></div>
     </header>
     <main>
       <div class="above-book"><span>조금 느리게, 나의 속도로.</span><span>MONTHLY JOURNAL <i></i> <span id="yearLabel"></span></span></div>
