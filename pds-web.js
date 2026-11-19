@@ -49,7 +49,7 @@
   function newPlan(open = false) { return `<details class="pds-card"${open ? ' open' : ''}><summary>새 계획 등록</summary>${form('plan.save', planFields(), '계획 등록하기')}</details>`; }
   function dashboard(q) {
     const plans = state.plans.filter(p => !p.deleted_at).sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
-    if (!plans.length) return heading('나의 계획 노트') + '<div class="empty-state"><span>❧</span><h2>첫 계획을 기다리고 있어요.</h2><p>예시 기록은 넣지 않았습니다. 공개해도 괜찮은 실제 계획을 등록해주세요.</p></div>' + newPlan(true);
+    if (!plans.length) return heading('나의 계획 노트') + '<div class="empty-state"><img class="rabbit-emblem" src="../assets/rabbit-flowers.svg?v=4" alt="" aria-hidden="true" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2><p>예시 기록은 넣지 않았습니다. 공개해도 괜찮은 실제 계획을 등록해주세요.</p></div>' + newPlan(true);
     const plan = plans.find(p => p.id === Number(q.plan)) || plans[0], from = q.from || '', to = q.to || '';
     const { values, groups } = M.summary(state, plan.id, from, to);
     const filters = `<form data-action="filter" class="pds-filters">${options('plan', Object.fromEntries(plans.map(p => [p.id, p.title])), plan.id, '계획 선택')}${field('집계 시작 (마감일 기준)', 'from', from, 'date', false)}${field('집계 종료', 'to', to, 'date', false)}<button class="pds-button">기간 적용</button></form>`;
@@ -158,3 +158,4 @@
   if (storage.channel) storage.channel.onmessage = () => message('다른 탭의 기록이 변경되었습니다. 저장 시 최신 기록에 반영됩니다. 목록을 새로고침해 확인하세요.');
   refresh(true);
 })();
+
