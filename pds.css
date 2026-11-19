@@ -3,3 +3,5 @@
 .pds-nav button{font-size:inherit;padding:0}.pds-status{min-height:18px;font-size:11px;line-height:1.7;color:#8b795f}.pds-status.is-error{padding:12px 15px;border:1px solid #c9a28b;color:#995e42;background:#f5e5d5;border-radius:4px}.pds-button:disabled{opacity:.5;cursor:wait}.public-notice strong{font-weight:700}.backup-panel{background:#f8f2e5}
 @media(max-width:900px){.pds-workspace{padding:0 22px}.pds-paper{padding:25px 20px}.pds-nav{gap:12px;font-size:10px}.pds-workspace .brand-caption{display:none}.pds-two{grid-template-columns:1fr}.pds-filters .pds-field{min-width:120px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pds-heading h1{font-size:27px}}
 @media(max-width:480px){.pds-workspace .toolbar{height:auto;min-height:90px;align-items:flex-start;flex-direction:column;gap:12px;padding:18px 0}.pds-nav{flex-wrap:wrap}.pds-paper{padding:20px 14px}.pds-card{padding:16px}.pds-row{grid-template-columns:1fr;gap:0}.pds-filters{gap:12px}.pds-filters .pds-field{flex-basis:100%}.public-notice{font-size:11px;padding:12px}.pds-heading p{font-size:11px}.metric{padding:14px}}
+.empty-state .rabbit-emblem{display:block;width:88px;height:auto;margin:0 auto 8px}
+
