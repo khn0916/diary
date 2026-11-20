@@ -33,6 +33,9 @@
       field('계획 전체 예상 시간 (분)', 'estimated_minutes', p.estimated_minutes, 'number', true, 'min="0" max="1000000"') +
       field('성공 기준', 'success_criteria', p.success_criteria, 'textarea', false);
   }
+  function tagField(plan = {}) {
+    return field('해시태그', 'tags', plan.tags, 'text', false, 'maxlength="300" placeholder="#공부 #여행"');
+  }
   function taskFields(plan, t = {}) {
     return hidden('id', t.id || '') + hidden('plan_id', plan) + field('할 일', 'title', t.title, 'text', true, 'maxlength="200"') +
       row(field('마감일', 'due_date', t.due_date || M.today(), 'date') + options('priority', priorities, t.priority || 2, '우선순위')) +
@@ -62,24 +65,64 @@
     return `<dialog id="planComposer" class="plan-composer plan-paper" data-color="cream" aria-labelledby="planComposerTitle">
       <h2 id="planComposerTitle">새 계획 등록</h2>
       <form data-action="plan.save" class="pds-form">
-        ${planBasics()}${colorPicker()}
+        ${planBasics()}${colorPicker()}${tagField()}
         <p class="plan-form-error" role="alert"></p>
         <div class="plan-form-actions"><button type="button" data-close-plan>취소</button><button class="pds-button" type="submit">추가하기</button></div>
       </form>
     </dialog>`;
   }
-  function planBoard(plans, selected) {
-    const header = heading('나의 계획 노트', '<button type="button" class="pds-button" data-open-plan>+ 새 계획 등록</button>');
-    const notes = plans.map(plan => `<a class="plan-note plan-paper" data-color="${plan.color}" href="${e(url({ plan: plan.id }))}"${plan.id === selected ? ' aria-current="true"' : ''}>
+  function planBoard(plans) {
+    const header = heading('나의 계획 메모', '<button type="button" class="pds-button" data-open-plan>+ 새 계획 등록</button>');
+    const notes = plans.map(plan => `<button type="button" class="plan-note plan-paper" data-color="${plan.color}" data-view-plan="${plan.id}" aria-haspopup="dialog">
       <strong>${e(plan.title)}</strong><span>${e(plan.start_date)} – ${e(plan.end_date)}</span><small>우선순위 ${priorities[plan.priority]}</small>
-    </a>`).join('');
-    return header + planComposer() + (notes
+    </button>`).join('');
+    return header + planComposer() + '<dialog id="planMemo" class="plan-memo plan-paper" aria-labelledby="planMemoTitle"></dialog>' + (notes
       ? `<section class="plan-board" aria-label="계획 메모지">${notes}</section>`
       : '<div class="empty-state"><img class="rabbit-emblem" src="../assets/rabbit-flowers.svg?v=4" alt="" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2></div>');
   }
-  function dashboard(q) {
-    const plans = state.plans.filter(p => !p.deleted_at).sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
-    if (!plans.length) return planBoard(plans);
+  const rabbitStamps = [
+    '<path d="M36 47c-7-5-12-15-9-19 4-4 10 2 14 10-3-10-1-17 3-16 5 0 8 11 9 18 13 2 18 14 10 22-2 1-3 3-3 5 1 12-7 20-19 19-13 0-22-8-22-18 0-12 9-21 21-21 7 0 13 3 17 8"/><path d="M41 85c-6 0-9-5-6-9 4-5 9-2 10 2 1 3-1 6-4 7Z"/><circle cx="57" cy="47" r="2" fill="currentColor" stroke="none"/>',
+    '<path d="M39 75c-8-7-10-18-6-29 1-3 2-6-1-9-7-7-1-17 8-18 7-2 14 3 19 9 9 4 18 12 15 17-3 4-10-1-16-5 5 7 10 16 13 25m-31 9c-6-3-7-12-3-13 4-1 6 6 3 11 2 4 5 8 9 10-9 2-7 8-1 8 11 0 21-3 27-7"/><path d="M71 72c0-5 5-8 9-5 8 5 3 18-5 16M45 39c2 9 8 16 11 14 3-2-2-10-5-14"/><circle cx="38" cy="29" r="2" fill="currentColor" stroke="none"/>',
+    '<path d="M22 65c1-5 5-10 9-13-2-9-1-22 4-26 6-3 10 10 7 21 5-6 12-11 15-7 2 3-2 7-5 10 10-7 21-7 27-1 7-3 12 3 8 7 4 3 5 7 4 10 9 3 7 8 0 8H70m-32 0c-10 0-18-2-16-9m14 9h22c10-1 4-6-6-6"/><circle cx="32" cy="61" r="2" fill="currentColor" stroke="none"/>'
+  ];
+  function memoStamp(completion) {
+    if (!completion) return '';
+    return `<figure class="memo-stamp">
+      <svg viewBox="0 0 110 110" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="55" cy="55" r="51"/>${rabbitStamps[completion.stamp - 1]}</svg>
+      <figcaption><time datetime="${e(completion.date)}">${e(completion.date)}</time> 완료</figcaption>
+    </figure>`;
+  }
+  function showMemo(plan, { editing = false, stamped = false } = {}) {
+    const dialog = document.getElementById('planMemo');
+    dialog.dataset.color = plan.color;
+    dialog.dataset.planId = plan.id;
+    const tags = [...new Set(plan.tags.split(/[#,\s]+/).filter(Boolean))];
+    const error = '<p class="plan-form-error" role="alert"></p>';
+    dialog.innerHTML = editing
+      ? `<div class="memo-sheet"><h2 id="planMemoTitle">계획 수정</h2><form data-action="plan.save" class="pds-form">
+          ${hidden('id', plan.id)}${planBasics(plan)}${colorPicker(plan.color)}${tagField(plan)}${error}
+          <div class="plan-form-actions"><button type="button" data-cancel-memo>취소</button><button class="pds-button" type="submit">저장</button></div>
+        </form></div>`
+      : `<div class="memo-sheet${stamped ? ' memo-stamped' : ''}">
+          <header class="memo-title memo-reveal"><h2 id="planMemoTitle">${e(plan.title)}</h2>
+            ${plan.completion ? '' : form('plan.complete', hidden('id', plan.id), '완료')}
+          </header>
+          <p class="memo-dates memo-reveal"><time>${e(plan.start_date)}</time> – <time>${e(plan.end_date)}</time></p>
+          <p class="memo-priority memo-reveal">우선순위 ${priorities[plan.priority]}</p>
+          ${memoStamp(plan.completion)}${error}
+          ${tags.length ? `<ul class="memo-tags" aria-label="해시태그">${tags.map(tag => `<li>#${e(tag)}</li>`).join('')}</ul>` : ''}
+          <div class="plan-form-actions memo-actions"><button type="button" data-edit-memo>수정</button><button type="button" class="pds-button" data-close-memo>확인</button></div>
+        </div>`;
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector(editing ? '[name="title"]' : '[data-close-memo]').focus();
+  }
+  function activePlans() {
+    return state.plans.filter(p => !p.deleted_at).sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
+  }
+  // The records view remains available for the future execution and review pages.
+  function recordsPage(q) {
+    const plans = activePlans();
+    if (!plans.length) return heading('실행 · 회고');
     const plan = plans.find(p => p.id === Number(q.plan)) || plans[0], from = q.from || '', to = q.to || '';
     const { values, groups } = M.summary(state, plan.id, from, to);
     const filters = `<form data-action="filter" class="pds-filters">${options('plan', Object.fromEntries(plans.map(p => [p.id, p.title])), plan.id, '계획 선택')}${field('집계 시작 (마감일 기준)', 'from', from, 'date', false)}${field('집계 종료', 'to', to, 'date', false)}<button class="pds-button">기간 적용</button></form>`;
@@ -101,10 +144,10 @@
       const next = state.plans.find(p => p.source_review_id === r.id && !p.deleted_at);
       const nextDate = new Date(Date.parse(r.to_date + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
       const nextFields = hidden('review_id', r.id) + field('다음 계획 이름', 'title', plan.title.slice(0, 185) + ' · 다음 계획', 'text', true, 'maxlength="200"') + row(field('시작일', 'start_date', nextDate, 'date') + field('종료일', 'end_date', nextDate, 'date'));
-      return `<article class="history-item"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
+      return `<article class="history-item"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ view: 'records', plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
     }).join('');
     const see = `<section class="pds-card"><span class="eyebrow">SEE → NEXT PLAN</span><h2>다음 페이지를 위한 회고</h2>${form('review.save', reviewFields(plan, { from_date: from || plan.start_date, to_date: to || plan.end_date }), '회고 저장')}${reviews}</section>`;
-    return planBoard(plans, plan.id) + filters + overview + cards + edits + table + see;
+    return heading('실행 · 회고') + filters + overview + cards + edits + table + see;
   }
   function taskPage(id) {
     const task = M.find(state, 'tasks', id), records = state.executions.filter(r => r.task_id === task.id && !r.deleted_at).sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id);
@@ -115,7 +158,10 @@
   function render() {
     if (!loaded) return;
     const q = query();
-    try { app.innerHTML = q.task ? taskPage(q.task) : dashboard(q); }
+    try {
+      app.innerHTML = q.task ? taskPage(q.task) : q.view === 'records' || q.metric || q.from || q.to
+        ? recordsPage(q) : planBoard(activePlans());
+    }
     catch (error) { app.innerHTML = heading('기록을 확인해주세요') + `<section class="pds-card"><p>${e(error.message)}</p><a class="pds-button" href="#">전체 계획으로 돌아가기</a></section>`; }
     app.setAttribute('aria-busy', 'false');
     if (q.metric) requestAnimationFrame(() => document.getElementById('evidence')?.scrollIntoView({ block: 'start' }));
@@ -139,23 +185,34 @@
     event.preventDefault();
     if (!loaded || target.dataset.busy) return;
     const data = Object.fromEntries(new FormData(target)), type = target.dataset.action;
-    if (type === 'filter') { navigate(data); return; }
+    if (type === 'filter') { navigate({ view: 'records', ...data }); return; }
     if (type === 'delete' && data.confirm !== 'on') return;
     target.dataset.busy = 'yes';
     const button = event.submitter || target.querySelector('button[type="submit"], button:not([type])');
     const composer = target.closest('#planComposer');
-    const errorLine = composer?.querySelector('.plan-form-error');
+    const memo = target.closest('#planMemo');
+    const errorLine = (composer || memo)?.querySelector('.plan-form-error');
     if (errorLine) errorLine.textContent = '';
     button.disabled = true;
     try {
       const result = await storage.write({ type, data });
       state = result.state;
       composer?.close();
-      if (type === 'plan.save' || type === 'plan.next') navigate({ plan: result.id });
+      if (memo) {
+        if (!memo.isConnected) return;
+        if (type === 'plan.save') {
+          memo.close();
+          render();
+          app.querySelector(`[data-view-plan="${result.id}"]`)?.focus({ preventScroll: true });
+        }
+        showMemo(M.find(state, 'plans', result.id), { stamped: type === 'plan.complete' });
+      }
+      else if (composer) render();
+      else if (type === 'plan.save' || type === 'plan.next') navigate({ view: 'records', plan: result.id });
       else if (type === 'task.save') navigate({ plan: data.plan_id, task: result.id });
       else if (type === 'execution.save') navigate({ plan: query().plan, task: data.task_id });
       else if (type === 'delete') navigate(data.kind === 'plan' ? {} : data.kind === 'execution' ? { plan: data.plan, task: data.task } : { plan: data.plan, metric: 'planned' });
-      else navigate({ ...query(), plan: data.plan_id });
+      else navigate({ ...query(), view: 'records', plan: data.plan_id });
       message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 이 브라우저에 저장되었어요.' : '기록이 이 브라우저에 저장되었어요.');
     } catch (error) {
       if (errorLine) errorLine.textContent = error.message;
@@ -165,6 +222,19 @@
   });
   app.addEventListener('click', event => {
     const composer = document.getElementById('planComposer');
+    const note = event.target.closest('[data-view-plan]');
+    if (note) {
+      note.focus({ preventScroll: true });
+      showMemo(M.find(state, 'plans', note.dataset.viewPlan));
+      return;
+    }
+    const memo = event.target.closest('#planMemo');
+    if (memo && !memo.querySelector('form[data-busy="yes"]')) {
+      if (event.target === memo || event.target.closest('[data-close-memo]')) memo.close();
+      if (event.target.closest('[data-edit-memo], [data-cancel-memo]')) {
+        showMemo(M.find(state, 'plans', memo.dataset.planId), { editing: Boolean(event.target.closest('[data-edit-memo]')) });
+      }
+    }
     if (event.target.closest('[data-open-plan]')) {
       composer.querySelector('form').reset();
       composer.querySelector('.plan-form-error').textContent = '';
@@ -177,11 +247,11 @@
     if (evidenceLink && evidenceLink.getAttribute('href') === location.hash) requestAnimationFrame(() => document.getElementById('evidence')?.scrollIntoView({ block: 'start' }));
   });
   app.addEventListener('change', event => {
-    const composer = event.target.closest('#planComposer');
+    const composer = event.target.closest('#planComposer, #planMemo');
     if (composer && event.target.name === 'color') composer.dataset.color = event.target.value;
   });
   app.addEventListener('cancel', event => {
-    if (event.target.id === 'planComposer' && event.target.querySelector('form').dataset.busy) event.preventDefault();
+    if (event.target.matches('#planComposer, #planMemo') && event.target.querySelector('form[data-busy="yes"]')) event.preventDefault();
   }, true);
   document.getElementById('exportData').addEventListener('click', async () => {
     try {

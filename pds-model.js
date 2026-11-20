@@ -52,22 +52,28 @@
     const [start_date, end_date] = period(data);
     const color = data.color ?? 'cream';
     if (!Object.hasOwn(planColors, color)) fail('메모지 색을 선택해주세요.');
-    return { title: text(data, 'title', 200), start_date, end_date, color, priority: integer(data.priority, 1, 3), success_criteria: text(data, 'success_criteria', 2000, false), estimated_minutes: integer(data.estimated_minutes ?? 0) };
+    return { title: text(data, 'title', 200), start_date, end_date, color, priority: integer(data.priority, 1, 3), success_criteria: text(data, 'success_criteria', 2000, false), estimated_minutes: integer(data.estimated_minutes ?? 0), tags: text(data, 'tags', 300, false) };
   }
   function apply(original, command, now = new Date().toISOString()) {
     const state = clone(original), d = command.data || {};
     let id;
     if (command.type === 'plan.save') {
-      const values = planValues(d);
       let plan;
       if (d.id) {
         plan = find(state, 'plans', d.id);
-        Object.assign(plan, values, { updated_at: now });
+        Object.assign(plan, planValues({ ...plan, ...d }), { updated_at: now });
       } else {
-        plan = { id: nextId(state), ...values, source_review_id: null, improvement: '', created_at: now, updated_at: now, deleted_at: null };
+        plan = { id: nextId(state), ...planValues(d), source_review_id: null, improvement: '', created_at: now, updated_at: now, deleted_at: null };
         state.plans.push(plan);
       }
       snapshot(state, plan, now); id = plan.id;
+    } else if (command.type === 'plan.complete') {
+      const plan = find(state, 'plans', d.id);
+      if (!plan.completion) {
+        plan.completion = { date: today(new Date(now)), stamp: Math.floor(Math.random() * 3) + 1 };
+        plan.updated_at = now;
+      }
+      id = plan.id;
     } else if (command.type === 'task.save') {
       const plan = find(state, 'plans', d.plan_id);
       const values = { title: text(d, 'title', 200), due_date: date(d.due_date), priority: integer(d.priority, 1, 3), tags: text(d, 'tags', 300, false), estimated_minutes: integer(d.estimated_minutes) };
@@ -124,7 +130,7 @@
       if (prior) { if (prior.deleted_at) fail('이 회고로 만든 다음 계획은 삭제되었습니다. 새 계획을 등록해주세요.'); id = prior.id; }
       else {
         const [start_date, end_date] = period(d);
-        const plan = { id: nextId(state), title: text(d, 'title', 200), start_date, end_date, color: previous.color ?? 'cream', priority: previous.priority, success_criteria: previous.success_criteria, estimated_minutes: previous.estimated_minutes, source_review_id: review.id, improvement: review.improvement, created_at: now, updated_at: now, deleted_at: null };
+        const plan = { id: nextId(state), title: text(d, 'title', 200), start_date, end_date, color: previous.color ?? 'cream', priority: previous.priority, success_criteria: previous.success_criteria, estimated_minutes: previous.estimated_minutes, tags: '', source_review_id: review.id, improvement: review.improvement, created_at: now, updated_at: now, deleted_at: null };
         state.plans.push(plan); snapshot(state, plan, now); id = plan.id;
       }
     } else if (command.type === 'delete') {
@@ -158,8 +164,11 @@
     const state = empty(); state.sequence = candidate.sequence;
     const timestamp = value => { if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) fail('백업 시각 형식을 확인해주세요.'); return value; };
     const base = row => ({ id: integer(row.id, 1, Number.MAX_SAFE_INTEGER), created_at: timestamp(row.created_at), updated_at: timestamp(row.updated_at), deleted_at: row.deleted_at ? timestamp(row.deleted_at) : null });
+    const completion = row => row.completion == null ? {} : {
+      completion: { date: date(row.completion.date), stamp: integer(row.completion.stamp, 1, 3) }
+    };
     for (const kind of lists) if (!Array.isArray(candidate[kind]) || candidate[kind].length > 50000) fail('백업의 데이터 구조 또는 크기를 확인해주세요.');
-    state.plans = candidate.plans.map(p => ({ ...base(p), ...planValues(p), source_review_id: p.source_review_id == null ? null : integer(p.source_review_id, 1, Number.MAX_SAFE_INTEGER), improvement: text(p, 'improvement', 2000, false) }));
+    state.plans = candidate.plans.map(p => ({ ...base(p), ...planValues(p), ...completion(p), source_review_id: p.source_review_id == null ? null : integer(p.source_review_id, 1, Number.MAX_SAFE_INTEGER), improvement: text(p, 'improvement', 2000, false) }));
     state.tasks = candidate.tasks.map(t => { if (typeof t.completed !== 'boolean') fail('완료 상태가 올바르지 않습니다.'); return { ...base(t), plan_id: integer(t.plan_id, 1, Number.MAX_SAFE_INTEGER), title: text(t, 'title', 200), due_date: date(t.due_date), priority: integer(t.priority, 1, 3), tags: text(t, 'tags', 300, false), estimated_minutes: integer(t.estimated_minutes), completed: t.completed }; });
     state.executions = candidate.executions.map(r => {
       const started_at = timestamp(r.started_at), ended_at = timestamp(r.ended_at), minutes = (Date.parse(ended_at) - Date.parse(started_at)) / 60000;
@@ -171,7 +180,7 @@
       if (!v.snapshot || v.snapshot.id !== v.plan_id) fail('계획 이력의 연결이 올바르지 않습니다.');
       const parent = state.plans.find(p => p.id === v.plan_id);
       if (!parent) fail('계획 이력의 원래 계획이 없습니다.');
-      const snapshot = { ...base(v.snapshot), ...planValues(v.snapshot), source_review_id: parent.source_review_id, improvement: text(v.snapshot, 'improvement', 2000, false) };
+      const snapshot = { ...base(v.snapshot), ...planValues(v.snapshot), ...completion(v.snapshot), source_review_id: parent.source_review_id, improvement: text(v.snapshot, 'improvement', 2000, false) };
       return { id: integer(v.id, 1, Number.MAX_SAFE_INTEGER), plan_id: v.plan_id, version: integer(v.version, 1), snapshot, created_at: timestamp(v.created_at) };
     });
     state.completions = candidate.completions.map(c => ({ task_id: integer(c.task_id, 1, Number.MAX_SAFE_INTEGER), completed_at: timestamp(c.completed_at) }));
