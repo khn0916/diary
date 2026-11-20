@@ -75,6 +75,7 @@
     const header = heading('나의 계획 메모', '<button type="button" class="pds-button" data-open-plan>+ 새 계획 등록</button>');
     const notes = plans.map(plan => `<button type="button" class="plan-note plan-paper" data-color="${plan.color}" data-view-plan="${plan.id}" aria-haspopup="dialog">
       <strong>${e(plan.title)}</strong><span>${e(plan.start_date)} – ${e(plan.end_date)}</span><small>우선순위 ${priorities[plan.priority]}</small>
+      ${boardStamp(plan.completion)}
     </button>`).join('');
     return header + planComposer() + '<dialog id="planMemo" class="plan-memo plan-paper" aria-labelledby="planMemoTitle"></dialog>' + (notes
       ? `<section class="plan-board" aria-label="계획 메모지">${notes}</section>`
@@ -85,10 +86,17 @@
     '<path d="M39 75c-8-7-10-18-6-29 1-3 2-6-1-9-7-7-1-17 8-18 7-2 14 3 19 9 9 4 18 12 15 17-3 4-10-1-16-5 5 7 10 16 13 25m-31 9c-6-3-7-12-3-13 4-1 6 6 3 11 2 4 5 8 9 10-9 2-7 8-1 8 11 0 21-3 27-7"/><path d="M71 72c0-5 5-8 9-5 8 5 3 18-5 16M45 39c2 9 8 16 11 14 3-2-2-10-5-14"/><circle cx="38" cy="29" r="2" fill="currentColor" stroke="none"/>',
     '<path d="M22 65c1-5 5-10 9-13-2-9-1-22 4-26 6-3 10 10 7 21 5-6 12-11 15-7 2 3-2 7-5 10 10-7 21-7 27-1 7-3 12 3 8 7 4 3 5 7 4 10 9 3 7 8 0 8H70m-32 0c-10 0-18-2-16-9m14 9h22c10-1 4-6-6-6"/><circle cx="32" cy="61" r="2" fill="currentColor" stroke="none"/>'
   ];
+  function rabbitStampSvg(stamp) {
+    return `<svg viewBox="0 0 110 110" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="55" cy="55" r="51"/>${rabbitStamps[stamp - 1]}</svg>`;
+  }
+  function boardStamp(completion) {
+    if (!completion) return '';
+    return `<span class="plan-note-stamp" role="img" aria-label="${e(completion.date)} 완료">${rabbitStampSvg(completion.stamp)}</span>`;
+  }
   function memoStamp(completion) {
     if (!completion) return '';
     return `<figure class="memo-stamp">
-      <svg viewBox="0 0 110 110" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="55" cy="55" r="51"/>${rabbitStamps[completion.stamp - 1]}</svg>
+      ${rabbitStampSvg(completion.stamp)}
       <figcaption><time datetime="${e(completion.date)}">${e(completion.date)}</time> 완료</figcaption>
     </figure>`;
   }
@@ -117,11 +125,13 @@
               <button type="submit" class="memo-delete-button">삭제</button>
             </form>
             <button type="button" data-edit-memo>수정</button>
-            <button type="button" class="pds-button" data-close-memo>확인</button>
+            ${plan.completion
+              ? '<button type="button" class="pds-button" data-review-memo>회고</button>'
+              : '<button type="button" class="pds-button" data-close-memo>확인</button>'}
           </div>
         </div>`;
     if (!dialog.open) dialog.showModal();
-    dialog.querySelector(editing ? '[name="title"]' : '[data-close-memo]').focus();
+    dialog.querySelector(editing ? '[name="title"]' : '[data-close-memo], [data-review-memo]').focus();
   }
   function activePlans() {
     return state.plans.filter(p => !p.deleted_at).sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
@@ -147,14 +157,20 @@
     const controls = `<form data-action="filter" class="pds-filters">${hidden('plan', plan.id) + hidden('from', from) + hidden('to', to) + hidden('metric', metric)}${field('제목·태그 검색', 'q', q.q, 'text', false)}${options('state', { '': '전체 상태', open: '미완료', done: '완료' }, q.state, '상태')}${field('태그 일치', 'tag', q.tag, 'text', false)}${options('sort', sorts, sort, '정렬 기준')}<button class="pds-button">조회</button></form>`;
     const rows = tasks.map(t => `<tr><td><a href="${e(url({ plan: plan.id, task: t.id }))}"><b>#${t.id} ${e(t.title)}</b></a><span class="table-note">${e(t.tags)}</span></td><td>${e(t.due_date)}</td><td>${priorities[t.priority]}</td><td>${t.completed ? '완료' : t.due_date < M.today() ? '지연' : '진행 중'}${t.blocked ? ' · 막힘' : ''}</td><td>${t.estimated_minutes} / ${t.actual_minutes}분</td><td>${form('task.complete', hidden('task_id', t.id) + hidden('plan_id', plan.id) + hidden('completed', t.completed ? '0' : '1'), t.completed ? '완료 취소' : '완료 처리')}</td></tr>`).join('');
     const table = `<section id="evidence" class="pds-card"><h2>${e(metrics[metric] || '할 일')} · 근거 기록</h2><p class="subtle">집계는 선택 계획의 삭제되지 않은 할 일과 마감일 기준입니다. 실제 시간은 해당 할 일의 유효 실행 기록 합계입니다. 할 일 제목을 누르면 실행 기록이 보입니다.</p>${controls}<p class="sort-label">정렬: ${sorts[sort]} · 검색 결과 ${tasks.length}건</p><div class="table-scroll"><table><thead><tr><th>할 일 / 태그</th><th>마감일</th><th>우선순위</th><th>상태</th><th>예상 / 실제</th><th>처리</th></tr></thead><tbody>${rows || '<tr><td colspan="6">해당하는 기록이 없습니다.</td></tr>'}</tbody></table></div></section>`;
+    return heading('실행 · 회고') + filters + overview + cards + edits + table + reviewSection(plan, from, to);
+  }
+  function reviewSection(plan, from = '', to = '') {
     const reviews = state.reviews.filter(r => r.plan_id === plan.id && !r.deleted_at).sort((a, b) => b.id - a.id).map(r => {
       const next = state.plans.find(p => p.source_review_id === r.id && !p.deleted_at);
       const nextDate = new Date(Date.parse(r.to_date + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
       const nextFields = hidden('review_id', r.id) + field('다음 계획 이름', 'title', plan.title.slice(0, 185) + ' · 다음 계획', 'text', true, 'maxlength="200"') + row(field('시작일', 'start_date', nextDate, 'date') + field('종료일', 'end_date', nextDate, 'date'));
       return `<article class="history-item"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ view: 'records', plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
     }).join('');
-    const see = `<section class="pds-card"><span class="eyebrow">SEE → NEXT PLAN</span><h2>다음 페이지를 위한 회고</h2>${form('review.save', reviewFields(plan, { from_date: from || plan.start_date, to_date: to || plan.end_date }), '회고 저장')}${reviews}</section>`;
-    return heading('실행 · 회고') + filters + overview + cards + edits + table + see;
+    return `<section class="pds-card"><span class="eyebrow">SEE → NEXT PLAN</span><h2>다음 페이지를 위한 회고</h2>${form('review.save', reviewFields(plan, { from_date: from || plan.start_date, to_date: to || plan.end_date }), '회고 저장')}${reviews}</section>`;
+  }
+  function reviewPage(id) {
+    const plan = M.find(state, 'plans', id);
+    return heading(plan.title + ' 회고', '<a class="pds-button" href="#">계획 메모로 돌아가기</a>') + reviewSection(plan);
   }
   function taskPage(id) {
     const task = M.find(state, 'tasks', id), records = state.executions.filter(r => r.task_id === task.id && !r.deleted_at).sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id);
@@ -166,8 +182,10 @@
     if (!loaded) return;
     const q = query();
     try {
-      app.innerHTML = q.task ? taskPage(q.task) : q.view === 'records' || q.metric || q.from || q.to
-        ? recordsPage(q) : planBoard(activePlans());
+      if (q.task) app.innerHTML = taskPage(q.task);
+      else if (q.view === 'review') app.innerHTML = reviewPage(q.plan);
+      else if (q.view === 'records' || q.metric || q.from || q.to) app.innerHTML = recordsPage(q);
+      else app.innerHTML = planBoard(activePlans());
     }
     catch (error) { app.innerHTML = heading('기록을 확인해주세요') + `<section class="pds-card"><p>${e(error.message)}</p><a class="pds-button" href="#">전체 계획으로 돌아가기</a></section>`; }
     app.setAttribute('aria-busy', 'false');
@@ -213,18 +231,23 @@
           render();
           app.querySelector('[data-open-plan]')?.focus({ preventScroll: true });
         } else {
+          const plan = M.find(state, 'plans', result.id);
+          const note = app.querySelector(`[data-view-plan="${result.id}"]`);
           if (type === 'plan.save') {
             memo.close();
             render();
             app.querySelector(`[data-view-plan="${result.id}"]`)?.focus({ preventScroll: true });
+          } else if (type === 'plan.complete' && note && !note.querySelector('.plan-note-stamp')) {
+            note.insertAdjacentHTML('beforeend', boardStamp(plan.completion));
           }
-          showMemo(M.find(state, 'plans', result.id), { stamped: type === 'plan.complete' });
+          showMemo(plan, { stamped: type === 'plan.complete' });
         }
       }
       else if (composer) render();
       else if (type === 'plan.save' || type === 'plan.next') navigate({ view: 'records', plan: result.id });
       else if (type === 'task.save') navigate({ plan: data.plan_id, task: result.id });
       else if (type === 'execution.save') navigate({ plan: query().plan, task: data.task_id });
+      else if (query().view === 'review' && (type === 'review.save' || type === 'delete' && data.kind === 'review')) render();
       else if (type === 'delete') navigate(data.kind === 'plan' ? {} : data.kind === 'execution' ? { plan: data.plan, task: data.task } : { plan: data.plan, metric: 'planned' });
       else navigate({ ...query(), view: 'records', plan: data.plan_id });
       message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 이 브라우저에 저장되었어요.' : '기록이 이 브라우저에 저장되었어요.');
@@ -244,6 +267,12 @@
     }
     const memo = event.target.closest('#planMemo');
     if (memo && !memo.querySelector('form[data-busy="yes"]')) {
+      if (event.target.closest('[data-review-memo]')) {
+        memo.close();
+        navigate({ view: 'review', plan: memo.dataset.planId });
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        return;
+      }
       if (event.target === memo || event.target.closest('[data-close-memo]')) memo.close();
       if (event.target.closest('[data-edit-memo], [data-cancel-memo]')) {
         showMemo(M.find(state, 'plans', memo.dataset.planId), { editing: Boolean(event.target.closest('[data-edit-memo]')) });
