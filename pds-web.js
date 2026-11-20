@@ -167,8 +167,8 @@
       return `<article class="history-item" id="review-${r.id}" tabindex="-1"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ view: 'records', plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
     }).join('');
     const draft = { from_date: from || plan.start_date, to_date: to || plan.end_date };
-    return `<section class="pds-card"><h2>작성한 회고</h2>${reviews || '<p>아직 작성한 회고가 없어요.</p>'}</section>
-      <details class="pds-card"><summary>+ 새 회고 작성</summary>${form('review.save', reviewFields(plan, draft), '회고 저장')}</details>`;
+    return `<section class="pds-card review-card"><h2>작성한 회고</h2>${reviews || '<p>아직 작성한 회고가 없어요.</p>'}</section>
+      <details class="pds-card review-card"><summary>+ 새 회고 작성</summary>${form('review.save', reviewFields(plan, draft), '회고 저장')}</details>`;
   }
   function reviewPage(id) {
     const plan = M.find(state, 'plans', id);
