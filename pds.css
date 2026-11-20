@@ -34,19 +34,20 @@
   background:repeating-linear-gradient(4deg,#fff3cb33 0 1px,transparent 1px 3px),repeating-linear-gradient(94deg,#84633320 0 1px,transparent 1px 4px),linear-gradient(165deg,#e6cf9cdb,#c4a46dab);
   clip-path:polygon(1% 0,99% 0,98% 14%,100% 24%,98% 36%,100% 52%,98% 68%,100% 84%,99% 100%,0 100%,2% 88%,0 76%,2% 60%,0 43%,2% 31%,0 17%);
 }
-.memo-title{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #6c594a42;padding-bottom:12px}
+.memo-title{display:grid;grid-template-columns:minmax(0,1fr) 56px;align-items:center;gap:14px;min-height:53px;border-bottom:1px solid #6c594a42;padding-bottom:12px}
 .plan-memo h2{margin:0;overflow-wrap:anywhere}
-.memo-title form{flex:none}
+.memo-title form{justify-self:end}
 .memo-dates,.memo-priority{margin:13px 0 0;font-size:14px}
 .memo-priority{margin-top:9px}
 .memo-reveal{animation:memo-reveal .28s .08s ease-out both}
 .memo-dates{animation-delay:.17s}
 .memo-priority{animation-delay:.25s}
-.memo-stamp{align-self:flex-end;margin:10px 10px 11px 0;color:#a44943;text-align:center;transform:rotate(-7deg)}
-.memo-stamp svg{display:block;width:86px;margin:0 auto 4px}
+.memo-stamp-slot{position:relative;flex:1 0 94px}
+.memo-stamp{position:absolute;right:10px;top:50%;margin:0;color:#a44943;text-align:center;transform:translateY(-50%) rotate(-7deg)}
+.memo-stamp svg{display:block;width:78px;margin:0 auto 3px}
 .memo-stamp figcaption{font:11px Arial,sans-serif;letter-spacing:.04em}
 .memo-stamped .memo-stamp{animation:memo-stamp .34s ease-out both}
-.memo-tags{display:flex;flex-wrap:wrap;gap:6px 12px;list-style:none;padding:0;margin:auto 0 12px;padding-top:18px;color:#685846;font-size:13px;overflow-wrap:anywhere}
+.memo-tags{display:flex;flex-wrap:wrap;gap:6px 12px;list-style:none;padding:4px 0 0;margin:0 0 12px;color:#685846;font-size:13px;overflow-wrap:anywhere}
 .memo-sheet .memo-actions{margin-top:auto;padding-top:12px;border-top:1px solid #6c594a35}
 .memo-tags+.memo-actions{margin-top:0}
 .memo-delete-form{margin-right:auto}
@@ -55,6 +56,6 @@
 .memo-sheet>form{margin-top:15px}
 @keyframes memo-open{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
 @keyframes memo-reveal{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@keyframes memo-stamp{from{opacity:0;transform:rotate(-15deg) scale(1.6)}to{opacity:1;transform:rotate(-7deg) scale(1)}}
+@keyframes memo-stamp{from{opacity:0;transform:translateY(-50%) rotate(-15deg) scale(1.6)}to{opacity:1;transform:translateY(-50%) rotate(-7deg) scale(1)}}
 @media(prefers-reduced-motion:reduce){.plan-memo[open],.memo-reveal,.memo-stamped .memo-stamp{animation:none}}
 

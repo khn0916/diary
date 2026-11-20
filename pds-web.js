@@ -109,7 +109,7 @@
           </header>
           <p class="memo-dates memo-reveal"><time>${e(plan.start_date)}</time> – <time>${e(plan.end_date)}</time></p>
           <p class="memo-priority memo-reveal">우선순위 ${priorities[plan.priority]}</p>
-          ${memoStamp(plan.completion)}${error}
+          <div class="memo-stamp-slot">${memoStamp(plan.completion)}</div>${error}
           ${tags.length ? `<ul class="memo-tags" aria-label="해시태그">${tags.map(tag => `<li>#${e(tag)}</li>`).join('')}</ul>` : ''}
           <div class="plan-form-actions memo-actions">
             <form class="memo-delete-form" data-action="delete">
