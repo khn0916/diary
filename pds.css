@@ -63,3 +63,8 @@
 
 .review-card{color:#50463a}
 .review-card .pds-field :is(input,select,textarea){color:#4b4237}
+.plan-tag-field .pds-field{margin-bottom:6px}
+.plan-tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.plan-tag{padding:4px 8px;border:1px solid #6c594a42;border-radius:4px;font-size:12px;overflow-wrap:anywhere;max-width:100%}
+.plan-tag-error{color:#803f38;font-size:12px}
+.plan-tag-error:empty{display:none}

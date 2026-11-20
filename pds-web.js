@@ -33,8 +33,32 @@
       field('계획 전체 예상 시간 (분)', 'estimated_minutes', p.estimated_minutes, 'number', true, 'min="0" max="1000000"') +
       field('성공 기준', 'success_criteria', p.success_criteria, 'textarea', false);
   }
+  const splitTags = value => [...new Set((value || '').split(/[#,\s]+/).filter(Boolean))];
+  const tagChips = tags => tags.map(tag =>
+    `<button type="button" class="plan-tag" data-remove-tag="${e(tag)}" aria-label="${e(tag)} 태그 삭제">#${e(tag)} <span aria-hidden="true">×</span></button>`
+  ).join('');
   function tagField(plan = {}) {
-    return field('해시태그', 'tags', plan.tags, 'text', false, 'maxlength="300" placeholder="#공부 #여행"');
+    const tags = splitTags(plan.tags);
+    return `<div class="plan-tag-field">${hidden('tags', tags.join(' '))}
+      ${field('해시태그', 'tag_draft', '', 'text', false, 'maxlength="300" placeholder="#공부 #여행 · Enter로 추가"')}
+      <div class="plan-tag-list" aria-live="polite">${tagChips(tags)}</div>
+      <p class="plan-tag-error" role="alert"></p>
+    </div>`;
+  }
+  function updateTags(tagField, tags) {
+    const value = tags.join(' ');
+    tagField.querySelector('.plan-tag-error').textContent = value.length > 300 ? '해시태그는 모두 합쳐 300자까지 추가할 수 있어요.' : '';
+    if (value.length > 300) return false;
+    tagField.querySelector('[name="tags"]').value = value;
+    tagField.querySelector('.plan-tag-list').innerHTML = tagChips(tags);
+    return true;
+  }
+  function commitTagDraft(tagField) {
+    const draft = tagField.querySelector('[name="tag_draft"]');
+    const saved = tagField.querySelector('[name="tags"]').value;
+    if (!updateTags(tagField, splitTags(saved + ' ' + draft.value))) return false;
+    draft.value = '';
+    return true;
   }
   function taskFields(plan, t = {}) {
     return hidden('id', t.id || '') + hidden('plan_id', plan) + field('할 일', 'title', t.title, 'text', true, 'maxlength="200"') +
@@ -104,7 +128,7 @@
     const dialog = document.getElementById('planMemo');
     dialog.dataset.color = plan.color;
     dialog.dataset.planId = plan.id;
-    const tags = [...new Set(plan.tags.split(/[#,\s]+/).filter(Boolean))];
+    const tags = splitTags(plan.tags);
     const error = '<p class="plan-form-error" role="alert"></p>';
     dialog.innerHTML = editing
       ? `<div class="memo-sheet"><h2 id="planMemoTitle">계획 수정</h2><form data-action="plan.save" class="pds-form">
@@ -208,12 +232,23 @@
       if (initial) message('이 브라우저에 기록됩니다. 중요한 기록은 파일로 백업해주세요.');
     } catch (error) { app.setAttribute('aria-busy', 'false'); message(error.message, true); }
   }
+  app.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || !event.target.matches('[name="tag_draft"]')) return;
+    event.preventDefault();
+    if (!event.target.form.dataset.busy) commitTagDraft(event.target.closest('.plan-tag-field'));
+  });
   app.addEventListener('submit', async event => {
     const target = event.target.closest('form[data-action]');
     if (!target) return;
     event.preventDefault();
     if (!loaded || target.dataset.busy) return;
+    const tags = target.querySelector('.plan-tag-field');
+    if (tags && !commitTagDraft(tags)) {
+      tags.querySelector('[name="tag_draft"]').focus();
+      return;
+    }
     const data = Object.fromEntries(new FormData(target)), type = target.dataset.action;
+    delete data.tag_draft;
     const memo = target.closest('#planMemo');
     if (type === 'filter') { navigate({ view: 'records', ...data }); return; }
     if (type === 'delete' && data.confirm !== 'on') return;
@@ -268,6 +303,15 @@
     finally { target.dataset.busy = ''; button.disabled = false; }
   });
   app.addEventListener('click', event => {
+    const tagButton = event.target.closest('[data-remove-tag]');
+    if (tagButton) {
+      if (tagButton.form.dataset.busy) return;
+      const tags = tagButton.closest('.plan-tag-field');
+      const saved = splitTags(tags.querySelector('[name="tags"]').value);
+      updateTags(tags, saved.filter(tag => tag !== tagButton.dataset.removeTag));
+      tags.querySelector('[name="tag_draft"]').focus();
+      return;
+    }
     const composer = document.getElementById('planComposer');
     const note = event.target.closest('[data-view-plan]');
     if (note) {
@@ -290,6 +334,7 @@
     }
     if (event.target.closest('[data-open-plan]')) {
       composer.querySelector('form').reset();
+      updateTags(composer.querySelector('.plan-tag-field'), []);
       composer.querySelector('.plan-form-error').textContent = '';
       composer.dataset.color = 'cream';
       composer.showModal();
