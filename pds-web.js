@@ -157,9 +157,9 @@
     const controls = `<form data-action="filter" class="pds-filters">${hidden('plan', plan.id) + hidden('from', from) + hidden('to', to) + hidden('metric', metric)}${field('제목·태그 검색', 'q', q.q, 'text', false)}${options('state', { '': '전체 상태', open: '미완료', done: '완료' }, q.state, '상태')}${field('태그 일치', 'tag', q.tag, 'text', false)}${options('sort', sorts, sort, '정렬 기준')}<button class="pds-button">조회</button></form>`;
     const rows = tasks.map(t => `<tr><td><a href="${e(url({ plan: plan.id, task: t.id }))}"><b>#${t.id} ${e(t.title)}</b></a><span class="table-note">${e(t.tags)}</span></td><td>${e(t.due_date)}</td><td>${priorities[t.priority]}</td><td>${t.completed ? '완료' : t.due_date < M.today() ? '지연' : '진행 중'}${t.blocked ? ' · 막힘' : ''}</td><td>${t.estimated_minutes} / ${t.actual_minutes}분</td><td>${form('task.complete', hidden('task_id', t.id) + hidden('plan_id', plan.id) + hidden('completed', t.completed ? '0' : '1'), t.completed ? '완료 취소' : '완료 처리')}</td></tr>`).join('');
     const table = `<section id="evidence" class="pds-card"><h2>${e(metrics[metric] || '할 일')} · 근거 기록</h2><p class="subtle">집계는 선택 계획의 삭제되지 않은 할 일과 마감일 기준입니다. 실제 시간은 해당 할 일의 유효 실행 기록 합계입니다. 할 일 제목을 누르면 실행 기록이 보입니다.</p>${controls}<p class="sort-label">정렬: ${sorts[sort]} · 검색 결과 ${tasks.length}건</p><div class="table-scroll"><table><thead><tr><th>할 일 / 태그</th><th>마감일</th><th>우선순위</th><th>상태</th><th>예상 / 실제</th><th>처리</th></tr></thead><tbody>${rows || '<tr><td colspan="6">해당하는 기록이 없습니다.</td></tr>'}</tbody></table></div></section>`;
-    return heading('실행 · 회고') + filters + overview + cards + edits + table + reviewSection(plan, from, to);
+    return heading('실행 · 회고') + filters + overview + cards + edits + table + reviewSection(plan, { from, to });
   }
-  function reviewSection(plan, from = '', to = '') {
+  function reviewSection(plan, { from = '', to = '', startDraft = false } = {}) {
     const reviews = state.reviews.filter(r => r.plan_id === plan.id && !r.deleted_at).sort((a, b) => b.id - a.id).map(r => {
       const next = state.plans.find(p => p.source_review_id === r.id && !p.deleted_at);
       const nextDate = new Date(Date.parse(r.to_date + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
@@ -167,12 +167,14 @@
       return `<article class="history-item" id="review-${r.id}" tabindex="-1"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ view: 'records', plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
     }).join('');
     const draft = { from_date: from || plan.start_date, to_date: to || plan.end_date };
+    const editor = form('review.save', reviewFields(plan, draft), '회고 저장');
+    if (!reviews && startDraft) return `<section class="pds-card review-card"><h2>새 회고 작성</h2>${editor}</section>`;
     return `<section class="pds-card review-card"><h2>작성한 회고</h2>${reviews || '<p>아직 작성한 회고가 없어요.</p>'}</section>
-      <details class="pds-card review-card"><summary>+ 새 회고 작성</summary>${form('review.save', reviewFields(plan, draft), '회고 저장')}</details>`;
+      <details class="pds-card review-card"><summary>+ 새 회고 작성</summary>${editor}</details>`;
   }
   function reviewPage(id) {
     const plan = M.find(state, 'plans', id);
-    return heading(plan.title + ' 회고', '<a class="pds-button" href="#">계획 메모로 돌아가기</a>') + reviewSection(plan);
+    return heading(plan.title + ' 회고', '<a class="pds-button" href="#">계획 메모로 돌아가기</a>') + reviewSection(plan, { startDraft: true });
   }
   function taskPage(id) {
     const task = M.find(state, 'tasks', id), records = state.executions.filter(r => r.task_id === task.id && !r.deleted_at).sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id);
