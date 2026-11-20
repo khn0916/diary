@@ -111,7 +111,14 @@
           <p class="memo-priority memo-reveal">우선순위 ${priorities[plan.priority]}</p>
           ${memoStamp(plan.completion)}${error}
           ${tags.length ? `<ul class="memo-tags" aria-label="해시태그">${tags.map(tag => `<li>#${e(tag)}</li>`).join('')}</ul>` : ''}
-          <div class="plan-form-actions memo-actions"><button type="button" data-edit-memo>수정</button><button type="button" class="pds-button" data-close-memo>확인</button></div>
+          <div class="plan-form-actions memo-actions">
+            <form class="memo-delete-form" data-action="delete">
+              ${hidden('kind', 'plan')}${hidden('id', plan.id)}${hidden('confirm', 'on')}
+              <button type="submit" class="memo-delete-button">삭제</button>
+            </form>
+            <button type="button" data-edit-memo>수정</button>
+            <button type="button" class="pds-button" data-close-memo>확인</button>
+          </div>
         </div>`;
     if (!dialog.open) dialog.showModal();
     dialog.querySelector(editing ? '[name="title"]' : '[data-close-memo]').focus();
@@ -185,12 +192,13 @@
     event.preventDefault();
     if (!loaded || target.dataset.busy) return;
     const data = Object.fromEntries(new FormData(target)), type = target.dataset.action;
+    const memo = target.closest('#planMemo');
     if (type === 'filter') { navigate({ view: 'records', ...data }); return; }
     if (type === 'delete' && data.confirm !== 'on') return;
+    if (type === 'delete' && memo && !window.confirm('이 계획 메모를 삭제할까요? 다이어리에서도 일정 표시가 사라집니다.')) return;
     target.dataset.busy = 'yes';
     const button = event.submitter || target.querySelector('button[type="submit"], button:not([type])');
     const composer = target.closest('#planComposer');
-    const memo = target.closest('#planMemo');
     const errorLine = (composer || memo)?.querySelector('.plan-form-error');
     if (errorLine) errorLine.textContent = '';
     button.disabled = true;
@@ -200,12 +208,18 @@
       composer?.close();
       if (memo) {
         if (!memo.isConnected) return;
-        if (type === 'plan.save') {
+        if (type === 'delete') {
           memo.close();
           render();
-          app.querySelector(`[data-view-plan="${result.id}"]`)?.focus({ preventScroll: true });
+          app.querySelector('[data-open-plan]')?.focus({ preventScroll: true });
+        } else {
+          if (type === 'plan.save') {
+            memo.close();
+            render();
+            app.querySelector(`[data-view-plan="${result.id}"]`)?.focus({ preventScroll: true });
+          }
+          showMemo(M.find(state, 'plans', result.id), { stamped: type === 'plan.complete' });
         }
-        showMemo(M.find(state, 'plans', result.id), { stamped: type === 'plan.complete' });
       }
       else if (composer) render();
       else if (type === 'plan.save' || type === 'plan.next') navigate({ view: 'records', plan: result.id });

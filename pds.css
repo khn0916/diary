@@ -24,11 +24,16 @@
 .plan-form-error{color:#803f38;font-size:12px}
 .plan-form-error:empty{display:none}
 .plan-note{text-align:left}
-.plan-memo{width:min(515px,calc(100% - 32px));max-height:calc(100% - 36px);padding:0;border:1px solid #8c735440;border-radius:4px;background:var(--plan-paper);overflow:auto}
+.plan-memo{width:min(515px,calc(100% - 32px));max-height:calc(100% - 36px);padding:18px 0 0;border:0;background:transparent;box-shadow:none;filter:drop-shadow(0 16px 24px #44372355);overflow:auto}
 .plan-memo[open]{animation:memo-open .26s ease-out both}
 .plan-memo::backdrop{background:#443b305c;backdrop-filter:blur(5px)}
-.memo-sheet{position:relative;display:flex;flex-direction:column;min-height:355px;padding:32px clamp(18px,5vw,34px) 22px}
-.memo-sheet::before{content:'';position:absolute;top:5px;left:50%;width:68px;height:16px;background:#aa8b5360;transform:translateX(-50%) rotate(-4deg);pointer-events:none}
+.memo-sheet{position:relative;display:flex;flex-direction:column;min-height:355px;padding:32px clamp(18px,5vw,34px) 22px;border:1px solid #8c735440;border-radius:4px;background:var(--plan-paper)}
+.memo-sheet::before{
+  content:'';position:absolute;top:-13px;left:50%;width:124px;height:34px;
+  transform:translateX(-50%) rotate(-3deg);pointer-events:none;
+  background:repeating-linear-gradient(4deg,#fff3cb33 0 1px,transparent 1px 3px),repeating-linear-gradient(94deg,#84633320 0 1px,transparent 1px 4px),linear-gradient(165deg,#e6cf9cdb,#c4a46dab);
+  clip-path:polygon(1% 0,99% 0,98% 14%,100% 24%,98% 36%,100% 52%,98% 68%,100% 84%,99% 100%,0 100%,2% 88%,0 76%,2% 60%,0 43%,2% 31%,0 17%);
+}
 .memo-title{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #6c594a42;padding-bottom:12px}
 .plan-memo h2{margin:0;overflow-wrap:anywhere}
 .memo-title form{flex:none}
@@ -44,6 +49,9 @@
 .memo-tags{display:flex;flex-wrap:wrap;gap:6px 12px;list-style:none;padding:0;margin:auto 0 12px;padding-top:18px;color:#685846;font-size:13px;overflow-wrap:anywhere}
 .memo-sheet .memo-actions{margin-top:auto;padding-top:12px;border-top:1px solid #6c594a35}
 .memo-tags+.memo-actions{margin-top:0}
+.memo-delete-form{margin-right:auto}
+.memo-delete-button{padding:9px 0;color:#914b41}
+.memo-delete-button:hover{color:#71352d;text-decoration:underline}
 .memo-sheet>form{margin-top:15px}
 @keyframes memo-open{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
 @keyframes memo-reveal{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
