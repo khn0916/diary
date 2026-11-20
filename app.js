@@ -5,6 +5,7 @@ let shown = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedKey = '';
 let store = { entries: {}, notes: {} };
 let calendarPlans = [];
+let calendarPlanLanes = 0;
 const previewSegments = new Intl.Segmenter('ko', { granularity: 'grapheme' });
 const $ = id => document.getElementById(id);
 const keyOf = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
@@ -73,6 +74,29 @@ function render() {
   renderPlanMarks();
   $('entryCount').textContent = `${count} DAYS RECORDED`;
 }
+function countPlanLanes(plans) {
+  // Start an interval before ending any interval on the same day.
+  const boundaries = plans.flatMap(plan => [
+    { date: plan.start_date, change: 1 },
+    { date: plan.end_date, change: -1 }
+  ]);
+  boundaries.sort((a, b) => a.date.localeCompare(b.date) || b.change - a.change);
+  let active = 0;
+  let peak = 0;
+  for (const { change } of boundaries) {
+    active += change;
+    peak = Math.max(peak, active);
+  }
+  return peak;
+}
+function updateCalendarHeight(grid) {
+  // Reserve the same row height for every month, including during a paper turn.
+  const hasPreview = Object.values(store.entries).some(entry =>
+    typeof entry?.text === 'string' && entry.text.trim()
+  );
+  const baseHeight = hasPreview ? '66px' : 'var(--plan-top)';
+  grid.style.setProperty('--plan-min-height', `calc(${baseHeight} + ${calendarPlanLanes} * var(--plan-step))`);
+}
 function renderPlanMarks() {
   const grid = $('days');
   const cells = Array.from(grid.querySelectorAll('.day'));
@@ -122,20 +146,14 @@ function renderPlanMarks() {
   }
   grid.querySelector('.calendar-plan-overlay')?.remove();
   if (dayPlans.some(plans => plans.length)) grid.append(overlay);
-  let previewDepth = -1;
   for (const [index, cell] of cells.entries()) {
     const plans = dayPlans[index];
     cell.setAttribute('aria-label', [cell.dataset.dayLabel, ...plans].join(', '));
     cell.style.setProperty('--plan-lanes', depth[index]);
     const preview = cell.querySelector('.day-content');
-    if (preview) {
-      preview.hidden = plans.length >= 2;
-      if (!preview.hidden) previewDepth = Math.max(previewDepth, depth[index]);
-    }
+    if (preview) preview.hidden = plans.length >= 2;
   }
-  const maxLanes = Math.max(0, ...depth);
-  const previewHeight = previewDepth < 0 ? '0px' : `calc(66px + ${previewDepth} * var(--plan-step))`;
-  grid.style.setProperty('--plan-min-height', `max(calc(var(--plan-top) + ${maxLanes} * var(--plan-step)), ${previewHeight})`);
+  updateCalendarHeight(grid);
   renderEntryPreviews();
 }
 function renderEntryPreviews() {
@@ -363,8 +381,7 @@ window.addEventListener('scroll',()=>{if(pageTurn?.active) positionFloating(page
 render();
 if (typeof ResizeObserver !== 'undefined') {
   new ResizeObserver(() => {
-    if (pageTurn) pageTurn.updatePlans = renderPlanMarks;
-    else renderEntryPreviews();
+    if (!pageTurn) renderEntryPreviews();
   }).observe($('days'));
   document.fonts?.ready.then(renderEntryPreviews);
 }
@@ -375,10 +392,16 @@ if (window.PDSStorage) {
     try {
       const { state } = await window.PDSStorage.read();
       if (request !== planRead) return;
-      calendarPlans = state.plans.filter(plan => !plan.deleted_at)
-        .sort((a, b) => a.priority - b.priority || a.id - b.id);
-      if (pageTurn) pageTurn.updatePlans = renderPlanMarks;
-      else renderPlanMarks();
+      const applyPlans = () => {
+        if (request !== planRead) return;
+        // Processing plans by start date keeps the weekly lane count within the overlap peak.
+        calendarPlans = state.plans.filter(plan => !plan.deleted_at)
+          .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.priority - b.priority || a.id - b.id);
+        calendarPlanLanes = countPlanLanes(calendarPlans);
+        renderPlanMarks();
+      };
+      if (pageTurn) pageTurn.updatePlans = applyPlans;
+      else applyPlans();
     } catch {
       if (request === planRead) $('saveStatus').textContent = '계획 노트의 일정을 불러오지 못했어요.';
     }
