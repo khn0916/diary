@@ -164,9 +164,11 @@
       const next = state.plans.find(p => p.source_review_id === r.id && !p.deleted_at);
       const nextDate = new Date(Date.parse(r.to_date + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
       const nextFields = hidden('review_id', r.id) + field('다음 계획 이름', 'title', plan.title.slice(0, 185) + ' · 다음 계획', 'text', true, 'maxlength="200"') + row(field('시작일', 'start_date', nextDate, 'date') + field('종료일', 'end_date', nextDate, 'date'));
-      return `<article class="history-item"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ view: 'records', plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
+      return `<article class="history-item" id="review-${r.id}" tabindex="-1"><h3>회고 #${r.id} · ${e(r.from_date)} ~ ${e(r.to_date)}</h3><p class="preserve-lines">${e(r.reflection)}</p><p class="improvement">다음에 바꿀 한 가지: ${e(r.improvement)}</p><p><a href="${e(url({ plan: plan.id, from: r.from_date, to: r.to_date, metric: 'planned' }))}" data-scroll-evidence>이 기간의 집계와 근거 보기 ↗</a></p>${next ? `<a class="pds-button" href="${e(url({ view: 'records', plan: next.id }))}">반영된 다음 계획 #${next.id} 열기</a>` : `<details><summary>개선점을 다음 계획에 반영하기</summary>${form('plan.next', nextFields, '개선점으로 다음 계획 만들기')}</details>`}<details><summary>회고 수정</summary>${form('review.save', reviewFields(plan, r), '회고 수정')}</details>${deletion('review', r.id, plan.id)}</article>`;
     }).join('');
-    return `<section class="pds-card"><span class="eyebrow">SEE → NEXT PLAN</span><h2>다음 페이지를 위한 회고</h2>${form('review.save', reviewFields(plan, { from_date: from || plan.start_date, to_date: to || plan.end_date }), '회고 저장')}${reviews}</section>`;
+    const draft = { from_date: from || plan.start_date, to_date: to || plan.end_date };
+    return `<section class="pds-card"><h2>작성한 회고</h2>${reviews || '<p>아직 작성한 회고가 없어요.</p>'}</section>
+      <details class="pds-card"><summary>+ 새 회고 작성</summary>${form('review.save', reviewFields(plan, draft), '회고 저장')}</details>`;
   }
   function reviewPage(id) {
     const plan = M.find(state, 'plans', id);
@@ -247,7 +249,13 @@
       else if (type === 'plan.save' || type === 'plan.next') navigate({ view: 'records', plan: result.id });
       else if (type === 'task.save') navigate({ plan: data.plan_id, task: result.id });
       else if (type === 'execution.save') navigate({ plan: query().plan, task: data.task_id });
-      else if (query().view === 'review' && (type === 'review.save' || type === 'delete' && data.kind === 'review')) render();
+      else if (query().view === 'review' && type === 'review.save') {
+        render();
+        const savedReview = document.getElementById(`review-${result.id}`);
+        savedReview?.focus({ preventScroll: true });
+        savedReview?.scrollIntoView({ block: 'start' });
+      }
+      else if (query().view === 'review' && type === 'delete' && data.kind === 'review') render();
       else if (type === 'delete') navigate(data.kind === 'plan' ? {} : data.kind === 'execution' ? { plan: data.plan, task: data.task } : { plan: data.plan, metric: 'planned' });
       else navigate({ ...query(), view: 'records', plan: data.plan_id });
       message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 이 브라우저에 저장되었어요.' : '기록이 이 브라우저에 저장되었어요.');
