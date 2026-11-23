@@ -54,7 +54,7 @@ def delete_form(kind, record_id, token, plan_id, task_id=''):
 
 def layout(title, content, status=200):
     return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{e(title)} · 여백 Plan–Do–See</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/pds.css?v=2"></head>
+<title>{e(title)} · 여백 Plan–Do–See</title><link rel="stylesheet" href="/style.css?v=11"><link rel="stylesheet" href="/pds.css?v=12"></head>
 <body><div class="workspace pds-workspace"><header class="toolbar"><a class="brand" href="/">▤ 여백 <span class="brand-caption">나의 작은 다이어리</span></a>
 <nav class="pds-nav"><a href="/">종이 다이어리</a><a href="/pds">계획 · 실행 · 회고</a><a href="/pds/export">전체 기록 내보내기 ↓</a></nav></header>
 <p class="public-notice" role="note">{NOTICE}</p><main class="pds-paper"><header class="pds-heading"><span class="eyebrow">PLAN · DO · SEE</span><h1>{e(title)}</h1><p>계획을 세우고, 하루를 실행하고, 다음 페이지에 배움을 남겨요.</p></header>
