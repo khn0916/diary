@@ -71,3 +71,5 @@
 .pds-nav a[aria-current="page"]{color:#4e4234;font-weight:700}
 .pds-nav .pds-export{padding:6px 10px;border:1px solid #c6b69e;border-radius:4px;background:#f5eddf;color:#655644}
 .pds-nav .pds-export:hover{border-color:#9b8669;background:#eee3cf;color:#4e4234}
+.review-page .pds-heading-row p,
+.review-card form[data-action="review.save"] .pds-field>span{font-size:14px;line-height:1.6;color:#493f34;word-break:keep-all;overflow-wrap:anywhere}

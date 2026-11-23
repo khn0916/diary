@@ -201,7 +201,7 @@
   }
   function reviewPage(id) {
     const plan = M.find(state, 'plans', id);
-    return heading(plan.title + ' 회고', '<a class="pds-button" href="#">계획 메모로 돌아가기</a>') + reviewSection(plan, { startDraft: true });
+    return `<div class="review-page">${heading(plan.title + ' 회고', '<a class="pds-button" href="#">계획 메모로 돌아가기</a>')}${reviewSection(plan, { startDraft: true })}</div>`;
   }
   function taskPage(id) {
     const task = M.find(state, 'tasks', id), records = state.executions.filter(r => r.task_id === task.id && !r.deleted_at).sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id);
