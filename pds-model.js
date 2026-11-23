@@ -48,6 +48,9 @@
   function snapshot(state, plan, now) {
     state.versions.push({ id: nextId(state), plan_id: plan.id, version: state.versions.filter(v => v.plan_id === plan.id).length + 1, snapshot: clone(plan), created_at: now });
   }
+  function planRevision(state, id) {
+    return state.versions.reduce((latest, version) => version.plan_id === id ? Math.max(latest, version.id) : latest, 0);
+  }
   function planValues(data) {
     const [start_date, end_date] = period(data);
     const color = data.color ?? 'cream';
@@ -61,6 +64,9 @@
       let plan;
       if (d.id) {
         plan = find(state, 'plans', d.id);
+        if (d.expected_revision != null && integer(d.expected_revision, 1, Number.MAX_SAFE_INTEGER) !== planRevision(state, plan.id)) {
+          fail('다른 탭에서 이 계획을 먼저 수정했어요. 입력 내용을 복사한 뒤 새로고침해서 최신 내용을 확인해주세요.');
+        }
         Object.assign(plan, planValues({ ...plan, ...d }), { updated_at: now });
       } else {
         plan = { id: nextId(state), ...planValues(d), source_review_id: null, improvement: '', created_at: now, updated_at: now, deleted_at: null };
@@ -201,5 +207,5 @@
     }
     return state;
   }
-  return { FORMAT, planColors, empty, apply, validate, find, tasks, summary, today, date, localTime };
+  return { FORMAT, planColors, empty, apply, validate, find, planRevision, tasks, summary, today, date, localTime };
 });

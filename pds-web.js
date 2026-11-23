@@ -28,8 +28,11 @@
       `<label class="plan-paper" data-color="${color}"><input type="radio" name="color" value="${color}"${color === selected ? ' checked' : ''}><span>${name}</span></label>`
     ).join('')}</fieldset>`;
   }
+  function planEditIdentity(plan) {
+    return hidden('id', plan.id) + hidden('expected_revision', M.planRevision(state, plan.id));
+  }
   function planFields(p) {
-    return hidden('id', p.id) + planBasics(p) + colorPicker(p.color) +
+    return planEditIdentity(p) + planBasics(p) + colorPicker(p.color) +
       field('계획 전체 예상 시간 (분)', 'estimated_minutes', p.estimated_minutes, 'number', true, 'min="0" max="1000000"') +
       field('성공 기준', 'success_criteria', p.success_criteria, 'textarea', false);
   }
@@ -132,7 +135,7 @@
     const error = '<p class="plan-form-error" role="alert"></p>';
     dialog.innerHTML = editing
       ? `<div class="memo-sheet"><h2 id="planMemoTitle">계획 수정</h2><form data-action="plan.save" class="pds-form">
-          ${hidden('id', plan.id)}${planBasics(plan)}${colorPicker(plan.color)}${tagField(plan)}${error}
+          ${planEditIdentity(plan)}${planBasics(plan)}${colorPicker(plan.color)}${tagField(plan)}${error}
           <div class="plan-form-actions"><button type="button" data-cancel-memo>취소</button><button class="pds-button" type="submit">저장</button></div>
         </form></div>`
       : `<div class="memo-sheet${stamped ? ' memo-stamped' : ''}">
