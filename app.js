@@ -25,23 +25,19 @@ const monthIcons = [
   'M16 15c-6 0-9-4-8-10l8 4 2 6c0-6 4-9 10-8l-4 8-6 2c6 0 9 4 8 10l-8-4-2-6c0 6-4 9-10 8l4-8 6-2Zm1 4v10',
   // June: umbrella
   'M5 17a11 11 0 0 1 22 0c-3-3-5-3-8 0-2-3-4-3-6 0-3-3-5-3-8 0ZM16 15v11a2.5 2.5 0 0 0 5 0',
-  // July: swimming ring
-  'M16 4a12 12 0 1 1 0 24 12 12 0 0 1 0-24Zm0 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z',
-  // August: summer sun
-  'M16 10a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0-7v3m0 20v3M3 16h3m20 0h3M7 7l2 2m14 14 2 2M7 25l2-2M23 9l2-2',
+  // July: sandcastle, flag and beach shovel
+  'M8 24l1-9h3v2h3v-2h3v2h3v-2h4l1.5 10M10 15l1-6h2v2h2V9h3v2h2V9h3l1 6M17 9V3l6 2-6 2M14 24v-3a3 3 0 0 1 6 0v3M2.5 29c3-3.4 8-5 14-5 5.5 0 10 1.5 13 5ZM3 17l2 5m-2-5c-1.6.5-2.5-2.5-1-3s2.6 2.5 1 3Zm4 9-3-1.5.5-2.5 2.7.9',
+  // August: naengmyeon with chopsticks, noodles and toppings
+  'M4 5h24a1.1 1.1 0 0 1 0 2.2H4A1.1 1.1 0 0 1 4 5ZM7 7.2c-2 2 .8 3 0 5-.6 1.4-1.4 2-.8 3.8m4-8.8c-1.8 2 .8 3 0 5-.7 1.4-1.4 2-.7 3.8m4-8.8c-1.7 2 1 3 0 5-.6 1.4-1.3 2-.7 3.8M4 16h24c-1 7-5.5 10.5-12 10.5S5 23 4 16Zm9 10-1 3h8l-1-3M18 10l2 2-2 2-2-2Zm7 0 2 2-2 2-2-2Z',
   // September: acorn
   'M16 9c0-3 2-5 5-5m-14 9c0-4 4-6 9-6s9 2 9 6v3H7Zm2 3v3c0 5 4 8 7 10 3-2 7-5 7-10v-3m-7-5v1m-4-1v1m8-1v1',
   // October: maple leaf
   'm16 3 3.5 8 4-2-.5 7 5-1-2 6-7 3-3-1-3 1-7-3-2-6 5 1-.5-7 4 2L16 3Zm0 13v13',
-  // November: ginkgo leaf
-  'M16 24C11 22 6 18 3 13c3-4 7-6 11-7l2 4 2-4c4 1 8 3 11 7-3 5-8 9-13 11Zm0 0v5m0-5-7-10m7 10v-11m0 11 7-10',
+  // November: bungeoppang, with a pressed tail and pastry scales
+  'M3 16c1.5-5 5.5-8 10.5-8 4.1 0 7.1 2.3 9.2 5l5.8-3c1.1-.5 1.7.3 1.4 1.6L28 16l1.9 4.4c.3 1.3-.3 2.1-1.4 1.6l-5.8-3c-2.2 2.7-5.1 5-9.2 5C8.5 24 4.5 21 3 16ZM8 14h.01M3.2 17.5H6m6-7c1.9 3.6 1.9 7.5 0 11m4-9c2.4.7 2.4 3 0 3.7 2.4.7 2.4 3 0 3.7m7-4 5-2m-5 2 5 2',
   // December: Christmas tree
   'm16 5 6 8h-3l6 7h-4l5 5H6l5-5H7l6-7h-3l6-8Zm-2 20v4h4v-4m-7-8h.01m7 4h.01m1-9h.01'
 ];
-// Each grid line stops at the outer rim or the inner opening (radii 12 and 5).
-const swimmingRingGrid =
-  'M8 7.1v17.8m4-20.2v8.3m0 6v8.3M16 4v7m0 10v7m4-23.3v8.3m0 6v8.3m4-20.2v17.8' +
-  'M7.1 8h17.8m-20.2 4H13m6 0h8.3M4 16h7m10 0h7M4.7 20H13m6 0h8.3M7.1 24h17.8';
 let storageReadable = true;
 try {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -73,7 +69,6 @@ function render() {
   const monthIcon = $('monthIconPath');
   monthIcon.setAttribute('d', monthIcons[month]);
   monthIcon.setAttribute('fill', month === 2 ? 'currentColor' : 'none');
-  $('monthIconTexture').setAttribute('d', month === 6 ? swimmingRingGrid : '');
   $('navDate').textContent = `${year}. ${String(month+1).padStart(2,'0')}`;
   $('pageNumber').textContent = `${String(month*2+1).padStart(2,'0')} — ${String(month*2+2).padStart(2,'0')}`;
   $('monthlyNote').value = typeof store.notes[monthKey()] === 'string' ? store.notes[monthKey()] : '';
