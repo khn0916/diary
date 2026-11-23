@@ -33,3 +33,7 @@
 .plan-highlight.plan-start.plan-end{border-radius:4px 3px 4px 3px}
 .day-content{display:block;min-height:0;max-height:2lh;margin-top:max(0px,calc(var(--plan-top) + var(--plan-lanes,0) * var(--plan-step) - 36px))}
 .day-content[hidden]{display:none}
+.day.public-holiday:not(.today) .day-number,.holiday-label{color:#a64b43}
+.day.public-holiday.today .day-number,.day.sunday.today .day-number{background:#a64b43}
+.holiday-label{position:absolute;top:11px;left:34px;right:8px;overflow:hidden;font-size:10px;line-height:16px;text-overflow:ellipsis;white-space:nowrap}
+.day:has(.day-mood,.today-tag) .holiday-label{right:41px}

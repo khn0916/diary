@@ -48,6 +48,7 @@ function render() {
   for (let index = 0; index < 42; index++) {
     const date = new Date(year, month, index-firstDay+1);
     const key = keyOf(date), entry = store.entries[key];
+    const holiday = typeof koreanPublicHolidays === 'undefined' ? '' : koreanPublicHolidays[key];
     const inMonth = date.getMonth() === month;
     const isToday = key === keyOf(today);
     if (inMonth && entry) count++;
@@ -56,9 +57,19 @@ function render() {
     cell.className = `day${inMonth?'':' outside'}${isToday?' today':''}${index%7===0?' sunday':''}${index%7===6?' saturday':''}`;
     cell.dataset.date = key;
     cell.dataset.dayLabel = `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일${isToday?', 오늘':''}${entry?', 기록 있음':', 기록하기'}`;
+    if (holiday) {
+      cell.classList.add('public-holiday');
+      cell.dataset.dayLabel += `, ${holiday}`;
+    }
     if (isToday) cell.setAttribute('aria-current','date');
     const number = document.createElement('span');
     number.className = 'day-number'; number.textContent = date.getDate(); cell.append(number);
+    if (holiday) {
+      const label = document.createElement('span');
+      label.className = 'holiday-label';
+      label.textContent = label.title = holiday;
+      cell.append(label);
+    }
     if (entry && typeof entry.mood === 'string' && ['☀','❀','☁','☂'].includes(entry.mood)) {
       const mood = document.createElement('span'); mood.className = 'day-mood'; mood.textContent = entry.mood; cell.append(mood);
     }
