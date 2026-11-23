@@ -11,6 +11,33 @@ const $ = id => document.getElementById(id);
 const keyOf = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const monthKey = () => keyOf(shown).slice(0, 7);
 const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+// Decorative month illustrations share the same 32 × 32 drawing area.
+const monthIcons = [
+  // January: snowflake
+  'M16 3v26M5 9.5l22 13M5 22.5l22-13M12 6l4 4 4-4m-8 20 4-4 4 4M5.5 14l5.5-1.5L9.5 7m13 18-1.5-5.5 5.5-1.5m0-4L21 12.5 22.5 7m-13 18 1.5-5.5L5.5 18',
+  // February: mitten
+  'M10 25v-3l-5-6a2.5 2.5 0 0 1 3.8-3.2l2.5 2.7V8a6 6 0 0 1 12 0v10c0 2-1 3-2 4v3M9 25h13v4H9zM15 12l2.5 2.5L20 12',
+  // March: sprout
+  'M16 27v-9m0 3C10 21 6 17 5 11c6 0 10 3 11 8m0-1C16 11 20 6 27 5c0 7-4 12-11 13M9 28h14',
+  // April: blossom
+  'M16 11c-5-8-10-2-7 3-7 0-8 7-1 8 2 0 4-1 5-2-2 6 3 10 7 5 1-2 1-4 0-5 5 5 11 1 8-4-1-2-4-2-6-2 3-5-2-11-6-3Zm0 5h.01',
+  // May: pinwheel for Children’s Day
+  'M16 15c-6 0-9-4-8-10l8 4 2 6c0-6 4-9 10-8l-4 8-6 2c6 0 9 4 8 10l-8-4-2-6c0 6-4 9-10 8l4-8 6-2Zm1 4v10',
+  // June: umbrella
+  'M5 17a11 11 0 0 1 22 0c-3-3-5-3-8 0-2-3-4-3-6 0-3-3-5-3-8 0ZM16 6V4m0 12v10a2.5 2.5 0 0 0 5 0m5-22-1 2M7 5l1 2',
+  // July: swimming ring
+  'M16 4a12 12 0 1 1 0 24 12 12 0 0 1 0-24Zm0 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM9 6.5l4 5.4m6 8.2 4 5.4m2.5-16.5-5.4 4m-8.2 6-5.4 4',
+  // August: summer sun
+  'M16 10a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0-7v3m0 20v3M3 16h3m20 0h3M7 7l2 2m14 14 2 2M7 25l2-2M23 9l2-2',
+  // September: acorn
+  'M16 9c0-3 2-5 5-5m-14 9c0-4 4-6 9-6s9 2 9 6v3H7Zm2 3v3c0 5 4 8 7 10 3-2 7-5 7-10v-3m-7-5v1m-4-1v1m8-1v1',
+  // October: maple leaf
+  'm16 3 3.5 8 4-2-.5 7 5-1-2 6-7 3-3-1-3 1-7-3-2-6 5 1-.5-7 4 2L16 3Zm0 13v13',
+  // November: ginkgo leaf
+  'M16 24C11 22 6 18 3 13c3-4 7-6 11-7l2 4 2-4c4 1 8 3 11 7-3 5-8 9-13 11Zm0 0v5m0-5-7-10m7 10v-11m0 11 7-10',
+  // December: Christmas tree
+  'm16 5 6 8h-3l6 7h-4l5 5H6l5-5H7l6-7h-3l6-8Zm-2 20v4h4v-4m-7-8h.01m7 4h.01m1-9h.01'
+];
 let storageReadable = true;
 try {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -39,6 +66,7 @@ function render() {
   $('yearLabel').textContent = year;
   $('monthEnglish').textContent = `${months[month]} ${year}`;
   $('monthTitle').textContent = `${String(month+1).padStart(2,'0')}월`;
+  $('monthIconPath').setAttribute('d', monthIcons[month]);
   $('navDate').textContent = `${year}. ${String(month+1).padStart(2,'0')}`;
   $('pageNumber').textContent = `${String(month*2+1).padStart(2,'0')} — ${String(month*2+2).padStart(2,'0')}`;
   $('monthlyNote').value = typeof store.notes[monthKey()] === 'string' ? store.notes[monthKey()] : '';
