@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#e9e2d7">
   <title>여백 — 나의 작은 다이어리</title>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
   <link rel="stylesheet" href="diary-navigation.css">
   <link rel="stylesheet" href="cover.css?v=5">
   <script src="pds-model.js?v=5" defer></script>
@@ -42,14 +42,16 @@
   <div class="workspace diary-open" id="diaryWorkspace" hidden>
     <header class="toolbar">
       <a class="brand" href="./"><span class="brand-mark">▤</span><span class="brand-lockup"><span class="brand-name">여백</span><span class="brand-caption">나의 작은 다이어리</span></span></a>
-      <div class="tools"><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">이 브라우저에 기록됩니다</span><button id="todayButton">오늘로</button></div>
+      <div class="tools"><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">이 브라우저에 기록됩니다</span></div>
     </header>
     <main>
       <div class="above-book"><span>조금 느리게, 나의 속도로.</span><span>MONTHLY JOURNAL <i></i> <span id="yearLabel"></span></span></div>
       <p class="mobile-hint">다이어리를 좌우로 밀어 모든 날짜를 확인하세요.</p>
       <div class="book-viewport">
         <section class="book" aria-label="월간 종이 다이어리">
-          <div class="ribbon" aria-hidden="true"></div>
+          <button type="button" id="todayButton" class="ribbon" aria-label="오늘 날짜로 이동">
+            <span class="ribbon-hint" aria-hidden="true">오늘 날짜로 이동</span>
+          </button>
           <header class="book-heading">
             <div class="month-heading"><div class="eyebrow" id="monthEnglish"></div><div class="month-line"><h1 id="monthTitle"></h1><svg class="month-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path id="monthIconPath"/></svg></div><p>평범한 하루도, 소중한 한 페이지.</p></div>
             <div class="heading-right"><div class="month-nav"><button id="previousMonth" aria-label="이전 달">←</button><span id="navDate"></span><button id="nextMonth" aria-label="다음 달">→</button></div></div>
