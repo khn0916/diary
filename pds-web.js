@@ -40,7 +40,7 @@
   function tagField(plan = {}) {
     const tags = splitTags(plan.tags);
     return `<div class="plan-tag-field">${hidden('tags', tags.join(' '))}
-      ${field('해시태그', 'tag_draft', '', 'text', false, 'maxlength="300" placeholder="#공부 #여행 · Enter로 추가"')}
+      ${field('해시태그', 'tag_draft', '', 'text', false, 'maxlength="300" placeholder="#공부 #여행 · 엔터로 태그를 남겨보세요"')}
       <div class="plan-tag-list" aria-live="polite">${tagChips(tags)}</div>
       <p class="plan-tag-error" role="alert"></p>
     </div>`;
