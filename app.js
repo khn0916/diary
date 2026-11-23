@@ -18,15 +18,15 @@ const monthIcons = [
   // February: mitten
   'M10 25v-3l-5-6a2.5 2.5 0 0 1 3.8-3.2l2.5 2.7V8a6 6 0 0 1 12 0v10c0 2-1 3-2 4v3M9 25h13v4H9zM15 12l2.5 2.5L20 12',
   // March: sprout
-  'M16 27v-9m0 3C10 21 6 17 5 11c6 0 10 3 11 8m0-1C16 11 20 6 27 5c0 7-4 12-11 13M9 28h14',
+  'M16 28V17M9 28h14M16 21C10 21 6 17 5 11c6 0 10 4 11 10Z M16 18C16 11 20 6 27 5c0 7-4 12-11 13Z',
   // April: blossom
   'M16 11c-5-8-10-2-7 3-7 0-8 7-1 8 2 0 4-1 5-2-2 6 3 10 7 5 1-2 1-4 0-5 5 5 11 1 8-4-1-2-4-2-6-2 3-5-2-11-6-3Zm0 5h.01',
   // May: pinwheel for Children’s Day
   'M16 15c-6 0-9-4-8-10l8 4 2 6c0-6 4-9 10-8l-4 8-6 2c6 0 9 4 8 10l-8-4-2-6c0 6-4 9-10 8l4-8 6-2Zm1 4v10',
   // June: umbrella
-  'M5 17a11 11 0 0 1 22 0c-3-3-5-3-8 0-2-3-4-3-6 0-3-3-5-3-8 0ZM16 6V4m0 12v10a2.5 2.5 0 0 0 5 0m5-22-1 2M7 5l1 2',
+  'M5 17a11 11 0 0 1 22 0c-3-3-5-3-8 0-2-3-4-3-6 0-3-3-5-3-8 0ZM16 15v11a2.5 2.5 0 0 0 5 0',
   // July: swimming ring
-  'M16 4a12 12 0 1 1 0 24 12 12 0 0 1 0-24Zm0 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM9 6.5l4 5.4m6 8.2 4 5.4m2.5-16.5-5.4 4m-8.2 6-5.4 4',
+  'M16 4a12 12 0 1 1 0 24 12 12 0 0 1 0-24Zm0 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z',
   // August: summer sun
   'M16 10a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0-7v3m0 20v3M3 16h3m20 0h3M7 7l2 2m14 14 2 2M7 25l2-2M23 9l2-2',
   // September: acorn
@@ -38,6 +38,10 @@ const monthIcons = [
   // December: Christmas tree
   'm16 5 6 8h-3l6 7h-4l5 5H6l5-5H7l6-7h-3l6-8Zm-2 20v4h4v-4m-7-8h.01m7 4h.01m1-9h.01'
 ];
+// Each grid line stops at the outer rim or the inner opening (radii 12 and 5).
+const swimmingRingGrid =
+  'M8 7.1v17.8m4-20.2v8.3m0 6v8.3M16 4v7m0 10v7m4-23.3v8.3m0 6v8.3m4-20.2v17.8' +
+  'M7.1 8h17.8m-20.2 4H13m6 0h8.3M4 16h7m10 0h7M4.7 20H13m6 0h8.3M7.1 24h17.8';
 let storageReadable = true;
 try {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -66,7 +70,10 @@ function render() {
   $('yearLabel').textContent = year;
   $('monthEnglish').textContent = `${months[month]} ${year}`;
   $('monthTitle').textContent = `${String(month+1).padStart(2,'0')}월`;
-  $('monthIconPath').setAttribute('d', monthIcons[month]);
+  const monthIcon = $('monthIconPath');
+  monthIcon.setAttribute('d', monthIcons[month]);
+  monthIcon.setAttribute('fill', month === 2 ? 'currentColor' : 'none');
+  $('monthIconTexture').setAttribute('d', month === 6 ? swimmingRingGrid : '');
   $('navDate').textContent = `${year}. ${String(month+1).padStart(2,'0')}`;
   $('pageNumber').textContent = `${String(month*2+1).padStart(2,'0')} — ${String(month*2+2).padStart(2,'0')}`;
   $('monthlyNote').value = typeof store.notes[monthKey()] === 'string' ? store.notes[monthKey()] : '';
