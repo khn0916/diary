@@ -68,3 +68,6 @@
 .plan-tag{padding:4px 8px;border:1px solid #6c594a42;border-radius:4px;font-size:12px;overflow-wrap:anywhere;max-width:100%}
 .plan-tag-error{color:#803f38;font-size:12px}
 .plan-tag-error:empty{display:none}
+.pds-nav a[aria-current="page"]{color:#4e4234;font-weight:700}
+.pds-nav .pds-export{padding:6px 10px;border:1px solid #c6b69e;border-radius:4px;background:#f5eddf;color:#655644}
+.pds-nav .pds-export:hover{border-color:#9b8669;background:#eee3cf;color:#4e4234}
