@@ -114,9 +114,9 @@
     password.value = passwordConfirm.value = '';
     passwordConfirm.required = registering;
     passwordConfirm.disabled = !registering;
-    document.getElementById('loginTitle').textContent = registering ? '다이어리 회원가입' : '다이어리 로그인';
+    document.getElementById('loginTitle').textContent = registering ? '여백 회원가입' : '여백 로그인';
     document.getElementById('loginDescription').textContent = registering
-      ? '이메일로 나만의 다이어리 계정을 만들어보세요.'
+      ? '나만의 계정을 만들어보세요.'
       : '로그인하고 나의 기록을 이어가세요.';
     form.querySelector('.login-submit').textContent = registering ? '가입하기' : '로그인';
     document.getElementById('signupSwitch').textContent = registering ? '로그인으로 돌아가기' : '회원가입';

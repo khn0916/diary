@@ -35,15 +35,15 @@
 }
 .login-heading {
   display: flex;
-  gap: 14px;
+  gap: clamp(8px, 3vw, 14px);
   justify-content: space-between;
   align-items: center;
   padding: 7px 0 20px;
   margin-bottom: 20px;
   border-bottom: 1px solid #d7ccb5;
 }
-.login-heading p { margin: 7px 0 0; font-size: 14px; line-height: 1.6; color: #615846; }
-.login-heading img { width: clamp(72px, 22vw, 96px); height: auto; flex: none; }
+.login-heading p { margin: 7px 0 0; font-size: clamp(12px, 3.6vw, 14px); line-height: 1.6; color: #615846; }
+.login-heading img { width: clamp(64px, 22vw, 96px); height: auto; flex: none; }
 .login-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .login-form label[hidden] { display: none; }
 .login-form label { display: block; margin-bottom: 14px; font-size: 14px; font-weight: 700; }
