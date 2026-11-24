@@ -21,7 +21,7 @@ function setup(reduced = false) {
   const motion = { matches: reduced, addEventListener(_, fn) { this.change = fn; } };
   const body = element(); body.classList.add('diary-closed');
   const context = vm.createContext({ Date, String, Math, matchMedia: () => motion,
-    document: { getElementById: id => ids[id], createElement: element, body }, window: { scrollTo() {} },
+    document: { getElementById: id => ids[id], createElement: element, body }, window: { scrollTo() {}, DiaryAuth: { enter: open => open() } },
     setTimeout(fn, delay) { const id = ++sequence; timers.set(id, { fn, delay }); return id; }, clearTimeout(id) { timers.delete(id); }
   });
   vm.runInContext(fs.readFileSync(`${__dirname}/cover.js`, 'utf8'), context);

@@ -7,23 +7,25 @@
   <title>계획 · 실행 · 회고 — 여백</title>
   <link rel="stylesheet" href="../style.css?v=11">
   <link rel="stylesheet" href="../pds.css?v=12">
-  <script src="../pds-model.js?v=5" defer></script>
-  <script src="../pds-storage.js" defer></script>
-  <script src="../pds-web.js?v=14" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ" crossorigin="anonymous" defer></script>
+  <script src="../diary-auth.js" defer></script>
+  <link rel="stylesheet" href="../diary-auth.css">
 </head>
 <body>
-  <div class="workspace pds-workspace">
+  <p class="login-fallback" id="plansLoginError" hidden>로그인 상태를 확인할 수 없어요. <a href="./index.html">다시 확인하기</a></p>
+  <noscript><p class="login-fallback">로그인하려면 브라우저의 JavaScript를 허용해주세요.</p></noscript>
+  <div class="workspace pds-workspace" id="plansWorkspace" hidden>
     <header class="toolbar"><a class="brand" href="../index.html">▤ 여백 <span class="brand-caption">나의 작은 다이어리</span></a>
       <nav class="pds-nav" aria-label="다이어리 메뉴">
         <a href="../index.html">종이 다이어리</a>
         <a href="./" aria-current="page">계획 · 실행 · 회고</a>
+        <button type="button" id="logoutDiary">로그아웃</button>
         <button type="button" id="exportData" class="pds-export">계획·실행·회고 내보내기 ↓</button>
       </nav>
     </header>
-    <p class="public-notice" role="note">지금은 로그인이 없어 링크를 아는 사람은 누구나 볼 수 있습니다. 남이 봐도 괜찮은 내용만 넣으세요<br><strong>현재 기록은 이 기기의 이 브라우저에 저장됩니다.</strong> 다른 방문자·기기와 자동 공유되지 않습니다. 브라우저 데이터를 지우기 전에 백업해주세요.</p>
+    <p class="public-notice" role="note"><strong>현재 기록은 계정별로 이 브라우저에 저장됩니다.</strong> 다른 방문자·기기와 자동 공유되지 않습니다. 브라우저 데이터를 지우기 전에 백업해주세요.</p>
     <p id="appStatus" role="status" class="pds-status">기록을 불러오는 중입니다…</p>
     <main id="pdsApp" class="pds-paper" aria-busy="true"></main>
-    <noscript><p class="public-notice">입력·저장 기능을 사용하려면 브라우저의 JavaScript를 허용해주세요.</p></noscript>
     <details class="pds-card backup-panel"><summary>백업 파일로 복원하기</summary><p class="subtle">이 HTML 버전에서 내보낸 JSON 백업을 복원합니다. 현재 Plan–Do–See 기록은 선택한 백업으로 교체됩니다. 종이 다이어리의 메모는 변경하지 않습니다.</p>
       <form id="importForm"><label class="pds-field"><span>백업 JSON 파일</span><input name="backup" type="file" accept=".json,application/json" required></label><label class="delete-confirm"><input name="confirm" type="checkbox" required> 현재 기록을 백업했고, 선택한 파일로 교체하겠습니다.</label><button class="pds-button">백업 복원</button></form>
     </details>

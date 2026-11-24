@@ -2,7 +2,9 @@
 (function () {
   'use strict';
   let connection;
-  const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('yeobaek-pds-updates') : null;
+  const accountId = window.diaryAccountId;
+  const documentKey = accountId ? 'account:' + accountId : 'current';
+  const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('yeobaek-pds-updates:' + documentKey) : null;
   async function open() {
     if (connection) return connection;
     connection = new Promise((resolve, reject) => {
@@ -25,12 +27,12 @@
       let result, failure;
       const tx = db.transaction('documents', command || replacement ? 'readwrite' : 'readonly');
       const store = tx.objectStore('documents');
-      const request = store.get('current');
+      const request = store.get(documentKey);
       request.onsuccess = () => {
         try {
           const current = replacement ? null : request.result ? PDSModel.validate(request.result) : PDSModel.empty();
           result = replacement ? { state: PDSModel.validate(replacement) } : command ? PDSModel.apply(current, command) : { state: current };
-          if (command || replacement) store.put(result.state, 'current');
+          if (command || replacement) store.put(result.state, documentKey);
         } catch (error) { failure = error; tx.abort(); }
       };
       tx.oncomplete = () => { if (command || replacement) channel?.postMessage('saved'); resolve(result); };

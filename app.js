@@ -1,5 +1,5 @@
 'use strict';
-const STORAGE_KEY = 'yeobaek.diary.v1';
+const STORAGE_KEY = 'yeobaek.diary.v1.' + window.diaryAccountId;
 const openedAt = new Date();
 let shown = new Date(openedAt.getFullYear(), openedAt.getMonth(), 1);
 let renderedToday = '';

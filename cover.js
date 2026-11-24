@@ -50,6 +50,6 @@
   }
   workspace.inert = true;
   updateYear();
-  openButton.addEventListener('click', open);
+  openButton.addEventListener('click', () => window.DiaryAuth?.enter(open));
   reducedMotion.addEventListener('change', () => { if (opening && reducedMotion.matches) finishOpening(); });
 })();
