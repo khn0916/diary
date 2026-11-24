@@ -46,7 +46,7 @@
       await load('holidays.js?v=1');
       await load('app.js?v=14');
     } else {
-      await load('pds-web.js?v=14');
+      await load('pds-web.js?v=15');
     }
   }
 

@@ -88,7 +88,7 @@ def dashboard(diary, query, token):
         plan_id = str(plans[0]['id'])
     new_plan = '<details class="pds-card" '+('open' if not plans else '')+'><summary>새 계획 등록</summary>'+form('/pds/plan', token, plan_fields(), '계획 등록하기')+'</details>'
     if not plan_id:
-        return layout('나의 계획 노트', '<div class="empty-state"><img class="rabbit-emblem" src="/assets/rabbit-flowers.svg?v=4" alt="" aria-hidden="true" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2><p>예시 기록은 넣지 않았습니다. 공개해도 괜찮은 실제 계획을 등록해주세요.</p></div>'+new_plan)
+        return layout('나의 계획 노트', '<div class="empty-state"><img class="rabbit-emblem" src="/assets/rabbit-flowers.svg?v=5" alt="" aria-hidden="true" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2><p>예시 기록은 넣지 않았습니다. 공개해도 괜찮은 실제 계획을 등록해주세요.</p></div>'+new_plan)
     plan, versions, reviews = diary.details(int(plan_id))
     plan_id = plan['id']
     start, end = query.get('from', ''), query.get('to', '')

@@ -106,7 +106,7 @@
     </button>`).join('');
     return header + planComposer() + '<dialog id="planMemo" class="plan-memo plan-paper" aria-labelledby="planMemoTitle"></dialog>' + (notes
       ? `<section class="plan-board" aria-label="계획 메모지">${notes}</section>`
-      : '<div class="empty-state"><img class="rabbit-emblem" src="../assets/rabbit-flowers.svg?v=4" alt="" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2></div>');
+      : '<div class="empty-state"><img class="rabbit-emblem" src="../assets/rabbit-flowers.svg?v=5" alt="" width="160" height="180"><h2>첫 계획을 기다리고 있어요.</h2></div>');
   }
   const rabbitStamps = [
     '<path d="M36 47c-7-5-12-15-9-19 4-4 10 2 14 10-3-10-1-17 3-16 5 0 8 11 9 18 13 2 18 14 10 22-2 1-3 3-3 5 1 12-7 20-19 19-13 0-22-8-22-18 0-12 9-21 21-21 7 0 13 3 17 8"/><path d="M41 85c-6 0-9-5-6-9 4-5 9-2 10 2 1 3-1 6-4 7Z"/><circle cx="57" cy="47" r="2" fill="currentColor" stroke="none"/>',
