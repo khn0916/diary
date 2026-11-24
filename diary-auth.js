@@ -15,11 +15,11 @@
   const auth = window.supabase?.createClient(
     'https://vyyihfaqdlyopjymfxyq.supabase.co',
     'sb_publishable_ckhHNDge1S8s_br6Rksofg_uOGgjxUv',
-    { auth: { detectSessionInUrl: false } }
+    { auth: { detectSessionInUrl: false, flowType: 'pkce' } }
   ).auth;
 
   const scripts = new Map();
-  let afterLogin, userId, busy = false;
+  let afterLogin, userId, busy = false, signingUp = false;
 
   function load(path) {
     if (!scripts.has(path)) {
@@ -68,11 +68,80 @@
   }
 
   function authenticationMessage(error) {
+    if (error?.code === 'email_not_confirmed') return '이메일의 확인 링크를 먼저 눌러주세요.';
     if (error?.status === 429) return '로그인 요청이 많아요. 잠시 후 다시 시도해주세요.';
     if (error?.status >= 500 || error?.name === 'AuthRetryableFetchError') {
       return '로그인 서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.';
     }
     return '이메일과 비밀번호를 다시 확인해주세요.';
+  }
+
+
+  const confirmationNotice = '받은편지함에서 확인 링크를 눌러주세요. 이미 가입했다면 바로 로그인할 수 있어요.';
+
+  async function register(credentials) {
+    const { data, error } = await auth.signUp({
+      ...credentials,
+      options: { emailRedirectTo: 'https://khn0916.github.io/diary/' }
+    });
+    if (!error && data.session && data.user) {
+      await unlock(data.user);
+      return;
+    }
+    if (!error || error.code === 'user_already_exists' || error.code === 'email_exists') {
+      setFormMode(false);
+      message.textContent = confirmationNotice;
+      return;
+    }
+    if (error.code === 'email_address_not_authorized') {
+      message.textContent = '현재 메일 설정에서 이 주소로 가입 확인 메일을 보낼 수 없어요.';
+    } else if (error.code === 'weak_password') {
+      message.textContent = '더 길고 추측하기 어려운 비밀번호를 입력해주세요.';
+    } else if (error.status === 429) {
+      message.textContent = '가입 요청이 많아요. 잠시 후 다시 시도해주세요.';
+    } else {
+      message.textContent = '가입을 완료하지 못했어요. 이메일 주소를 확인하고 다시 시도해주세요.';
+    }
+  }
+
+  function setFormMode(registering) {
+    signingUp = registering;
+    const { password, passwordConfirm } = form.elements;
+    const confirmation = document.getElementById('signupConfirm');
+    confirmation.hidden = !registering;
+    password.autocomplete = registering ? 'new-password' : 'current-password';
+    password.minLength = registering ? 8 : 0;
+    password.value = passwordConfirm.value = '';
+    passwordConfirm.required = registering;
+    passwordConfirm.disabled = !registering;
+    document.getElementById('loginTitle').textContent = registering ? '다이어리 회원가입' : '다이어리 로그인';
+    document.getElementById('loginDescription').textContent = registering
+      ? '이메일로 나만의 다이어리 계정을 만들어보세요.'
+      : '로그인하고 나의 기록을 이어가세요.';
+    form.querySelector('.login-submit').textContent = registering ? '가입하기' : '로그인';
+    document.getElementById('signupSwitch').textContent = registering ? '로그인으로 돌아가기' : '회원가입';
+    message.textContent = '';
+  }
+
+  async function confirmEmail(code, flowId) {
+    const page = new URL(location.href);
+    page.searchParams.delete('code');
+    page.searchParams.delete('sb_flow_id');
+    history.replaceState(history.state, '', page);
+    let confirmed = false;
+    try {
+      if (auth) {
+        const { data, error } = await auth.exchangeCodeForSession(code, { flowId });
+        confirmed = !error && !!data.session;
+      }
+    } catch {
+      // Another browser can confirm the address but will not have the PKCE verifier.
+    }
+    if (confirmed) {
+      document.getElementById('coverInvitation').textContent = '이메일 확인이 끝났어요. 표지를 눌러 다이어리를 펼쳐보세요.';
+    } else {
+      showLogin('이메일 확인 링크를 열었어요. 가입할 때 입력한 이메일과 비밀번호로 로그인해주세요.');
+    }
   }
 
   async function unlock(user) {
@@ -118,23 +187,37 @@
 
   if (form) {
     editForm(false);
+    document.getElementById('signupSwitch').addEventListener('click', () => {
+      setFormMode(!signingUp);
+      form.elements.email.focus();
+    });
     dialog.querySelector('[data-login-close]').addEventListener('click', () => dialog.close());
     dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
     dialog.addEventListener('close', () => {
       form.reset();
-      message.textContent = '';
+      setFormMode(false);
       coverButton.focus();
     });
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (busy || !auth) return;
-      const { email, password } = form.elements;
+      const { email, password, passwordConfirm } = form.elements;
+      if (signingUp && password.value !== passwordConfirm.value) {
+        message.textContent = '두 비밀번호가 같도록 다시 입력해주세요.';
+        passwordConfirm.focus();
+        return;
+      }
       const credentials = { email: email.value.trim(), password: password.value };
       busy = true;
       let credentialsAccepted = false;
       editForm(true);
-      message.textContent = '로그인하는 중이에요…';
+      message.textContent = signingUp ? '가입 요청을 보내는 중이에요…' : '로그인하는 중이에요…';
       try {
+        if (signingUp) {
+          password.value = passwordConfirm.value = '';
+          await register(credentials);
+          return;
+        }
         const { data, error } = await auth.signInWithPassword(credentials);
         if (error || !data?.session || !data.user) {
           message.textContent = authenticationMessage(error);
@@ -192,5 +275,8 @@
     })();
   } else if (fromPlans) {
     enter(() => {});
+  } else {
+    const params = new URLSearchParams(location.search);
+    if (params.has('code')) confirmEmail(params.get('code'), params.get('sb_flow_id') || undefined);
   }
 })();

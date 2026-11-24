@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="style.css?v=11">
   <link rel="stylesheet" href="diary-navigation.css">
   <link rel="stylesheet" href="cover.css?v=5">
-  <link rel="stylesheet" href="diary-auth.css">
+  <link rel="stylesheet" href="diary-auth.css?v=2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ" crossorigin="anonymous" defer></script>
-  <script src="diary-auth.js" defer></script>
+  <script src="diary-auth.js?v=2" defer></script>
   <script src="cover.js?v=2" defer></script>
 </head>
 <body class="diary-closed">
@@ -72,13 +72,15 @@
     <button type="button" class="login-close" data-login-close aria-label="로그인 창 닫기">×</button>
     <div class="login-heading">
       <div><h2 id="loginTitle">다이어리 로그인</h2><p id="loginDescription">로그인하고 나의 기록을 이어가세요.</p></div>
-      <img src="assets/rabbit-flowers.svg?v=4" width="48" height="54" alt="">
+      <img src="assets/login-rabbit.svg" width="146" height="204" alt="">
     </div>
     <form class="login-form" id="loginForm" method="post">
       <fieldset disabled>
         <label>이메일<input name="email" type="email" autocomplete="username" autocapitalize="none" maxlength="254" required autofocus></label>
         <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
+        <label id="signupConfirm" hidden>비밀번호 확인<input name="passwordConfirm" type="password" autocomplete="new-password" disabled></label>
         <button type="submit" class="login-submit">로그인</button>
+        <button type="button" class="login-switch" id="signupSwitch">회원가입</button>
       </fieldset>
       <p class="login-status" id="loginStatus" role="status"></p>
     </form>
