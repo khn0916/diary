@@ -6,8 +6,8 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const seoulTime = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Seoul' });
-  const textField = (label, name, max = 200) =>
-    `<label class="pds-field"><span>${label}</span><input name="${name}" maxlength="${max}" required></label>`;
+  const textField = (label, name, max = 200, required = true) =>
+    `<label class="pds-field"><span>${label}</span><input name="${name}" maxlength="${max}"${required ? ' required' : ''}></label>`;
   const studyForm = (action, input, label) =>
     `<form class="pds-form" data-study="${action}">${input}<button class="pds-button">${label}</button></form>`;
 
@@ -58,29 +58,52 @@
     return `합계 ${rounded(ticks)} ${unit} · 평균 ${rounded(ticks / values.length)} ${unit} (${values.length}일)`;
   }
 
-  function renderStudy(record) {
+  function renderStudy(record, plans = []) {
     if (!record) {
+      const useExecutions = plans.length > 0;
+      const planOptions = plans.map(plan => `<option value="${plan.id}">${escape(plan.title)}</option>`).join('');
       view.innerHTML = studyForm('start',
-        textField('답하려는 질문', 'question') + textField('관찰 지표 하나', 'metric') +
-        textField('단위', 'unit', 32) + textField('값 계산 방법', 'calculation', 500) +
+        textField('답하려는 질문', 'question') +
+        `<label class="pds-field"><span>관찰 지표 입력 방식</span><select name="mode">
+          <option value="execution"${useExecutions ? '' : ' disabled'}>계획의 실행 시간 불러오기</option>
+          <option value="manual"${useExecutions ? '' : ' selected'}>다른 지표 직접 입력</option>
+        </select></label>
+        <div data-study-execution${useExecutions ? '' : ' hidden'}>
+          <label class="pds-field"><span>실행 기록을 가져올 계획</span><select name="plan_id"${useExecutions ? ' required' : ' disabled'}>${planOptions}</select></label>
+          <p class="subtle">선택한 계획의 실행 노트에서 서울 기준 당일에 시작한 기록을 가져와 실제 시간(분)을 더해요. 5일 동안 같은 계획을 사용해요.</p>
+        </div>
+        ${useExecutions ? '' : '<p class="subtle">실행 시간을 가져오려면 먼저 계획 메모를 등록해주세요.</p>'}
+        <div data-study-manual${useExecutions ? ' hidden' : ''}>
+          ${textField('관찰 지표 하나', 'metric') + textField('단위', 'unit', 32) + textField('값 계산 방법', 'calculation', 500)}
+        </div>` +
         textField('처음 적용할 계획 규칙', 'rule', 500), '1일차 기준 저장');
+      if (useExecutions) view.querySelectorAll('[data-study-manual] input').forEach(input => { input.disabled = true; });
       return;
     }
     const unit = escape(record.unit), days = record.days;
     const changed = record.change;
+    const linked = record.plan_id != null;
+    const planUrl = `#view=records&plan=${encodeURIComponent(record.plan_id)}`;
     const intro = `<h3>${escape(record.question)}</h3>
       <p>${escape(record.metric)} (${unit}) · ${escape(record.calculation)}</p>
+      ${linked ? `<p><a href="${planUrl}">${escape(record.plan_title)}의 실행 기록 열기 ↗</a></p>` : ''}
       <p>처음 계획 규칙 · ${escape(record.rule)}</p>
       <p class="subtle">서울 시간 기준 · 주 시작 월요일 · 하루에 한 번 기록 · 결측은 합계와 평균에서 제외 · 음수 및 입력 범위 밖 값은 거절하고 범위 안 값은 근거와 함께 보존 · 소수점 둘째 자리 반올림</p>`;
     const changeDetails = changed ? `<p class="improvement">변경한 규칙 · ${escape(changed.rule)}<br>
       이유 · ${escape(changed.reason)}<br>${escape(seoulTime.format(new Date(changed.changed_at)))} · 근거 날짜 ${escape(changed.based_on.join(', '))}</p>` : '';
-    const entries = days.length ? `<ol>${days.map(day =>
-      `<li><time>${escape(day.date)}</time> · ${day.value === null ? '결측' : escape(day.value) + ' ' + unit} · ${escape(day.evidence)}</li>`).join('')}</ol>` : '';
-    const comparison = `<p><strong>전체</strong> · ${totals(days, unit)}</p>
+    const entries = days.length ? `<h3>일별 근거 기록</h3><ol>${days.map(day => {
+      const sources = day.sources?.map(source => `<li><a href="#plan=${encodeURIComponent(record.plan_id)}&amp;task=${encodeURIComponent(source.task_id)}">${escape(source.title)}</a> · 실행 #${escape(source.id)} · ${escape(source.minutes)}분</li>`).join('');
+      return `<li><time>${escape(day.date)}</time> · ${day.value === null ? '결측' : escape(day.value) + ' ' + unit}${day.evidence ? ' · ' + escape(day.evidence) : ''}
+        ${sources ? `<ul>${sources}</ul>` : day.sources ? '<p class="subtle">해당 날짜의 실행 기록이 없어요.</p>' : ''}</li>`;
+    }).join('')}</ol>` : '';
+    const comparison = `<h3>실사용 집계</h3><p><strong>전체</strong> · ${totals(days, unit)}</p>
       <p>변경 전 1~2일차 · ${totals(days.slice(0, 2), unit)}<br>변경 후 3~5일차 · ${totals(days.slice(2), unit)}</p>`;
     const action = days.length === 2 && !changed
       ? studyForm('change', textField('새 계획 규칙 한 가지', 'rule', 500) + textField('바꾸는 이유', 'reason', 500), '규칙 변경 기록')
-      : days.length < 5 ? studyForm('record',
+      : days.length < 5 ? studyForm('record', linked ?
+        `<p class="subtle">저장할 때 선택한 계획의 오늘 실행 기록과 합계를 가져와 근거로 남겨요. 실행 기록이 없으면 결측으로 남겨요.</p>
+          <label class="delete-confirm"><input type="checkbox" name="zero"> 실행 시간이 0분임을 확인했어요</label>` +
+          textField('오늘 기록 메모 (0분을 선택하면 이유 입력)', 'evidence', 1200, false) :
         `<label class="pds-field"><span>오늘 관찰한 값 (${unit})</span><input name="value" type="number" min="0" max="999999999.9999" step="0.0001" required></label>
           <label class="delete-confirm"><input type="checkbox" name="missing"> 오늘 값이 없어 결측으로 남기기</label>` +
           textField('오늘 기록의 근거', 'evidence', 1200), `${days.length + 1}일차 기록`) : '<p>5일 사용 기록이 완료되었어요.</p>';
@@ -90,18 +113,31 @@
   async function refreshStudy() {
     try {
       view.textContent = '사용 기록을 불러오는 중이에요…';
-      renderStudy((await cloud.read('study')).content);
+      const { content } = await cloud.read('study');
+      const plans = content ? [] : (await PDSStorage.read()).state.plans.filter(plan => !plan.deleted_at);
+      renderStudy(content, plans);
     } catch (error) {
       view.textContent = error.message;
     }
   }
 
   study.addEventListener('toggle', () => { if (study.open) refreshStudy(); });
-  document.getElementById('openDiaryStudy')?.addEventListener('click', () => {
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#openDiaryStudy, [data-open-diary-study]')) return;
     study.open = true;
     study.scrollIntoView({ block: 'start' });
   });
   panel.addEventListener('change', event => {
+    if (event.target.name === 'mode') {
+      const linked = event.target.value === 'execution';
+      const execution = event.target.form.querySelector('[data-study-execution]');
+      const manual = event.target.form.querySelector('[data-study-manual]');
+      execution.hidden = !linked;
+      execution.querySelector('select').disabled = !linked;
+      manual.hidden = linked;
+      manual.querySelectorAll('input').forEach(input => { input.disabled = linked; });
+    }
+    if (event.target.name === 'zero') event.target.form.elements.evidence.required = event.target.checked;
     if (event.target.name !== 'missing') return;
     const field = event.target.form.elements.value;
     field.disabled = event.target.checked;
@@ -119,7 +155,7 @@
 
   const studyErrors = {
     start: '1일차 기준이 이미 저장되었거나 입력이 비어 있어요.',
-    record: '서울 시간 기준으로 같은 날짜의 중복 기록은 할 수 없어요. 3일차 전에 계획 규칙을 바꿔주세요.',
+    record: '같은 날짜는 한 번만 기록할 수 있어요. 3일차 전 규칙 변경과 필수 입력도 확인해주세요.',
     change: '계획 규칙은 2일차 이후, 3일차 전에 한 번 바꿀 수 있어요. 새 규칙과 이유를 확인해주세요.'
   };
   panel.addEventListener('submit', async event => {

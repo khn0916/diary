@@ -140,6 +140,10 @@ declare
   count_days integer;
   metric_value numeric;
   entry jsonb;
+  plans_state jsonb;
+  study_plan jsonb;
+  sources jsonb;
+  evidence text;
 begin
   if jsonb_typeof(details) is distinct from 'object' or octet_length(details::text) > 16384 then
     raise sqlstate 'PT400' using message = 'Invalid study input';
@@ -153,18 +157,31 @@ begin
     if current_state is not null then
       raise sqlstate 'PT409' using message = 'The study has already started';
     end if;
-    if nullif(btrim(details->>'question'), '') is null or
-       nullif(btrim(details->>'metric'), '') is null or
-       nullif(btrim(details->>'unit'), '') is null or
-       nullif(btrim(details->>'calculation'), '') is null or
-       nullif(btrim(details->>'rule'), '') is null then
+    if nullif(btrim(details->>'question'), '') is null or nullif(btrim(details->>'rule'), '') is null then
       raise sqlstate 'PT400' using message = 'Complete the question, metric, unit, calculation and rule';
+    end if;
+    if details->>'mode' = 'execution' then
+      select p into study_plan
+      from yeobaek_private.documents d
+      cross join lateral jsonb_array_elements(d.content->'plans') p
+      where d.owner_id = actor and d.kind = 'plans' and p->>'id' = details->>'plan_id' and p->>'deleted_at' is null;
+      if study_plan is null then
+        raise sqlstate 'PT400' using message = 'Select one of your active plans';
+      end if;
+      details := details || jsonb_build_object('metric', '실제 실행 시간', 'unit', '분',
+        'calculation', '선택한 계획에서 서울 기준 당일에 시작한 유효 실행 기록의 실제 시간 합계');
+    elsif nullif(btrim(details->>'metric'), '') is null or nullif(btrim(details->>'unit'), '') is null or
+          nullif(btrim(details->>'calculation'), '') is null then
+      raise sqlstate 'PT400' using message = 'Complete the metric, unit and calculation';
     end if;
     current_state := jsonb_build_object(
       'question', btrim(details->>'question'), 'metric', btrim(details->>'metric'),
       'unit', btrim(details->>'unit'), 'calculation', btrim(details->>'calculation'),
       'rule', btrim(details->>'rule'), 'configured_at', moment, 'days', '[]'::jsonb
     );
+    if study_plan is not null then
+      current_state := current_state || jsonb_build_object('plan_id', study_plan->'id', 'plan_title', study_plan->'title');
+    end if;
     insert into yeobaek_private.documents(owner_id, kind, content) values (actor, 'study', current_state);
     return current_state;
   end if;
@@ -193,13 +210,38 @@ begin
     if count_days > 0 and today <= (days->(count_days-1)->>'date')::date then
       raise sqlstate 'PT409' using message = 'Use a different Seoul date for each entry';
     end if;
-    if nullif(btrim(details->>'evidence'), '') is null or
-       (details->>'value' is not null and (details->>'value') !~ '^[0-9]{1,9}(\.[0-9]{1,4})?$') then
-      raise sqlstate 'PT400' using message = 'Enter evidence and a nonnegative value or mark it missing';
+    evidence := nullif(btrim(details->>'evidence'), '');
+    if current_state ? 'plan_id' then
+      select content into plans_state from yeobaek_private.documents where owner_id = actor and kind = 'plans';
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', run->'id', 'task_id', task->'id', 'title', task->'title',
+        'minutes', run->'actual_minutes') order by run->>'started_at', run->>'id'), '[]'::jsonb),
+        sum((run->>'actual_minutes')::numeric)
+      into sources, metric_value
+      from jsonb_array_elements(plans_state->'plans') plan
+      cross join lateral jsonb_array_elements(plans_state->'tasks') task
+      join lateral jsonb_array_elements(plans_state->'executions') run on run->'task_id' = task->'id'
+      where plan->'id' = current_state->'plan_id' and plan->>'deleted_at' is null
+        and task->'plan_id' = plan->'id' and task->>'deleted_at' is null and run->>'deleted_at' is null
+        and ((run->>'started_at')::timestamptz at time zone 'Asia/Seoul')::date = today;
+      if metric_value is null and details->>'zero' = 'on' then
+        if evidence is null then
+          raise sqlstate 'PT400' using message = 'Explain why there was no activity';
+        end if;
+        metric_value := 0;
+      end if;
+    else
+      if evidence is null or
+         (details->>'value' is not null and (details->>'value') !~ '^[0-9]{1,9}(\.[0-9]{1,4})?$') then
+        raise sqlstate 'PT400' using message = 'Enter evidence and a nonnegative value or mark it missing';
+      end if;
+      metric_value := (details->>'value')::numeric;
     end if;
-    metric_value := (details->>'value')::numeric;
     entry := jsonb_build_object('date', today, 'recorded_at', moment,
-      'value', metric_value, 'evidence', btrim(details->>'evidence'));
+      'value', metric_value, 'evidence', coalesce(evidence, ''));
+    if sources is not null then
+      entry := entry || jsonb_build_object('sources', sources);
+    end if;
     current_state := jsonb_set(current_state, '{days}', days || jsonb_build_array(entry));
   else
     raise sqlstate 'PT400' using message = 'Invalid study operation';

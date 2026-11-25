@@ -59,8 +59,8 @@
       await load('holidays.js?v=1');
       await load('app.js?v=15');
     } else {
-      await load('pds-web.js?v=16');
-      await load('diary-account.js?v=1');
+      await load('pds-web.js?v=17');
+      await load('diary-account.js?v=2');
     }
   }
 

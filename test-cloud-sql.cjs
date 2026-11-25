@@ -58,6 +58,55 @@ async function main() {
   await rejects(study('record',{value:8,evidence:'duplicate test'}),'PT409');
   await rejects(study('change',{rule:'after',reason:'too soon'}),'PT409');
   await rejects(rpc('put','study',owners[0],2,{days:[]}), 'PT403');
+
+  const { rows: [dates] } = await db.query(`
+    select ((now() at time zone 'Asia/Seoul')::date - 1)::text as yesterday,
+      ((now() at time zone 'Asia/Seoul')::date - 2)::text as earlier,
+      (now() at time zone 'Asia/Seoul')::date::text as today
+  `);
+  const execution = (id, taskId, date, minutes, deleted = false) => ({
+    id, task_id: taskId, started_at: date + 'T00:05:00+09:00', actual_minutes: minutes,
+    deleted_at: deleted ? date + 'T01:00:00+09:00' : null
+  });
+  await rpc('put', 'plans', owners[0], 0, { plans: [{ id: 7, title: 'Other owner only' }] });
+  await asUser(1);
+  const ownPlans = {
+    plans: [{ id: 1, title: 'Study' }, { id: 2, title: 'Other plan' }],
+    tasks: [{ id: 3, plan_id: 1, title: 'Read' }, { id: 4, plan_id: 2 }, { id: 5, plan_id: 1, deleted_at: dates.today }],
+    executions: [
+      execution(10, 3, dates.today, 15), execution(11, 3, dates.today, 25),
+      execution(12, 3, dates.yesterday, 100), execution(13, 4, dates.today, 100),
+      execution(14, 3, dates.today, 100, true), execution(15, 5, dates.today, 100)
+    ]
+  };
+  await rpc('put', 'plans', owners[1], 0, ownPlans);
+  const setup = { mode: 'execution', question: 'compare?', rule: 'before' };
+  await rejects(study('start', { ...setup, plan_id: 7 }), 'PT400');
+  const linked = await study('start', { ...setup, plan_id: 1, metric: 'ignored' });
+  assert.equal(linked.metric, '실제 실행 시간');
+  assert.equal(linked.unit, '분');
+  const first = (await study('record', { value: 999 })).days[0];
+  assert.equal(first.date, dates.today);
+  assert.equal(first.value, 40);
+  assert.deepEqual(first.sources.map(source => [source.id, source.title, source.minutes]),
+    [[10, 'Read', 15], [11, 'Read', 25]]);
+  await rpc('put', 'plans', owners[1], 1, { ...ownPlans, executions: [] });
+  assert.deepEqual((await rpc('get', 'study')).content.days[0], first);
+  await db.exec('reset role');
+  await db.query("update yeobaek_private.documents set content = jsonb_set(content, '{days,0,date}', to_jsonb($2::text)) where owner_id = $1 and kind = 'study'", [owners[1], dates.earlier]);
+  await asUser(1);
+  const second = (await study('record', {})).days[1];
+  assert.equal(second.value, null);
+  assert.deepEqual(second.sources, []);
+  await db.exec('reset role');
+  await db.query("update yeobaek_private.documents set content = jsonb_set(content, '{days,1,date}', to_jsonb($2::text)) where owner_id = $1 and kind = 'study'", [owners[1], dates.yesterday]);
+  await asUser(1);
+  await rejects(study('record', {}), 'PT409');
+  const changed = await study('change', { rule: 'after', reason: 'fixture comparison' });
+  assert.deepEqual(changed.change.based_on, [dates.earlier, dates.yesterday]);
+  await rejects(study('record', { zero: 'on' }), 'PT400');
+  assert.equal((await study('record', { zero: 'on', evidence: 'No activity' })).days[2].value, 0);
+
   await db.exec('reset role');
   await db.query('delete from auth.sessions where id=$1',[sessions[0]]);
   await asUser(0);
@@ -75,6 +124,6 @@ async function main() {
   await db.exec('reset role');
   assert.deepEqual((await db.query('select distinct owner_id from yeobaek_private.documents')).rows,[{owner_id:owners[0]}]);
   await db.close();
-  console.log('PASS: SQL account scope, both directions 404, anonymous/revoked/password-changed 401, CAS, study order and account cascade.');
+  console.log('PASS: SQL account scope, session denial, CAS, execution evidence, study order and account cascade.');
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });
