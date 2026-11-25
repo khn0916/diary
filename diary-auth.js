@@ -12,11 +12,12 @@
   const landing = new URL('index.html', root);
   const planPage = new URL('pds/index.html', root);
   const fromPlans = new URLSearchParams(location.search).get('login') === 'pds';
-  const auth = window.supabase?.createClient(
+  const client = window.supabase?.createClient(
     'https://vyyihfaqdlyopjymfxyq.supabase.co',
     'sb_publishable_ckhHNDge1S8s_br6Rksofg_uOGgjxUv',
     { auth: { detectSessionInUrl: false, flowType: 'pkce' } }
-  ).auth;
+  );
+  const auth = client?.auth;
 
   const scripts = new Map();
   let afterLogin, userId, busy = false, signingUp = false;
@@ -41,12 +42,25 @@
     userId = user.id;
     Object.defineProperty(window, 'diaryAccountId', { value: userId, configurable: true });
     await load('pds-model.js?v=5');
-    await load('pds-storage.js?v=2');
+    await load('pds-storage.js?v=3');
+    window.diaryDatabase = client;
+    await load('diary-cloud.js?v=1');
+    try {
+      const saved = await window.DiaryCloud.read(journal ? 'journal' : 'plans');
+      if (journal) window.DiaryCloud.initialJournal = saved.content;
+    } catch (error) {
+      if (error.status === 401) {
+        await auth.signOut({ scope: 'global' });
+        lock();
+      }
+      throw error;
+    }
     if (journal) {
       await load('holidays.js?v=1');
-      await load('app.js?v=14');
+      await load('app.js?v=15');
     } else {
-      await load('pds-web.js?v=15');
+      await load('pds-web.js?v=16');
+      await load('diary-account.js?v=1');
     }
   }
 
@@ -93,7 +107,9 @@
       message.textContent = confirmationNotice;
       return;
     }
-    if (error.code === 'email_address_not_authorized') {
+    if (error.code === 'signup_disabled') {
+      message.textContent = '지금은 공개 회원가입을 준비 중이에요.';
+    } else if (error.code === 'email_address_not_authorized') {
       message.textContent = '현재 메일 설정에서 이 주소로 가입 확인 메일을 보낼 수 없어요.';
     } else if (error.code === 'weak_password') {
       message.textContent = '더 길고 추측하기 어려운 비밀번호를 입력해주세요.';
@@ -248,11 +264,14 @@
   logout?.addEventListener('click', async () => {
     logout.disabled = true;
     try {
-      await auth.signOut({ scope: 'local' });
+      await window.savePendingDiaryNotes?.();
+      const { error } = await auth.signOut({ scope: 'global' });
+      if (error) throw error;
+      if (!userId) lock();
     } catch {
-      // Even if the network is unavailable, leave the record screen.
-    } finally {
-      lock();
+      const status = document.getElementById('saveStatus') || document.getElementById('appStatus');
+      status.textContent = '저장이나 로그아웃을 마치지 못했어요. 연결을 확인하고 다시 시도해주세요.';
+      logout.disabled = false;
     }
   });
 
@@ -278,5 +297,8 @@
   } else {
     const params = new URLSearchParams(location.search);
     if (params.has('code')) confirmEmail(params.get('code'), params.get('sb_flow_id') || undefined);
+    else if (params.get('login') === '1') {
+      document.addEventListener('DOMContentLoaded', () => coverButton.click(), { once: true });
+    }
   }
 })();

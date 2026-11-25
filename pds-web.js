@@ -232,7 +232,7 @@
       const result = await storage.read();
       if (serial !== refreshSerial) return;
       state = result.state; loaded = true; render();
-      if (initial) message('이 브라우저에 기록됩니다. 중요한 기록은 파일로 백업해주세요.');
+      if (initial) message('계정에 기록됩니다. 중요한 기록은 파일로 백업해주세요.');
     } catch (error) { app.setAttribute('aria-busy', 'false'); message(error.message, true); }
   }
   app.addEventListener('keydown', event => {
@@ -298,7 +298,7 @@
       else if (query().view === 'review' && type === 'delete' && data.kind === 'review') render();
       else if (type === 'delete') navigate(data.kind === 'plan' ? {} : data.kind === 'execution' ? { plan: data.plan, task: data.task } : { plan: data.plan, metric: 'planned' });
       else navigate({ ...query(), view: 'records', plan: data.plan_id });
-      message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 이 브라우저에 저장되었어요.' : '기록이 이 브라우저에 저장되었어요.');
+      message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 계정에 저장되었어요.' : '기록이 계정에 저장되었어요.');
     } catch (error) {
       if (errorLine) errorLine.textContent = error.message;
       else message(error.message, true);
@@ -380,7 +380,7 @@
   });
   window.addEventListener('hashchange', render);
   // Other tabs notify without replacing a form that someone is currently editing.
-  if (storage.channel) storage.channel.onmessage = () => message('다른 탭의 기록이 변경되었습니다. 저장 시 최신 기록에 반영됩니다. 목록을 새로고침해 확인하세요.');
+  if (storage.channel) storage.channel.onmessage = () => message('다른 탭에서 기록이 변경되었어요. 새로고침하면 최신 기록을 볼 수 있어요.');
   refresh(true);
 })();
 

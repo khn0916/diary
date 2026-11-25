@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="../style.css?v=11">
   <link rel="stylesheet" href="../pds.css?v=12">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ" crossorigin="anonymous" defer></script>
-  <script src="../diary-auth.js?v=4" defer></script>
+  <script src="../diary-auth.js?v=5" defer></script>
   <link rel="stylesheet" href="../diary-auth.css?v=3">
 </head>
 <body>
@@ -19,17 +19,19 @@
       <nav class="pds-nav" aria-label="다이어리 메뉴">
         <a href="../index.html">종이 다이어리</a>
         <a href="./" aria-current="page">계획 · 실행 · 회고</a>
+        <button type="button" id="openDiaryStudy">5일 사용 기록</button>
         <button type="button" id="logoutDiary">로그아웃</button>
         <button type="button" id="exportData" class="pds-export">계획·실행·회고 내보내기 ↓</button>
       </nav>
     </header>
-    <p class="public-notice" role="note"><strong>현재 기록은 계정별로 이 브라우저에 저장됩니다.</strong> 다른 방문자·기기와 자동 공유되지 않습니다. 브라우저 데이터를 지우기 전에 백업해주세요.</p>
+    <p class="public-notice" role="note"><strong>현재 기록은 로그인한 계정의 서버 저장소에 기록됩니다.</strong> 과제 6에서 저장한 기록은 계정 설정에서 옮길 수 있어요.</p>
     <p id="appStatus" role="status" class="pds-status">기록을 불러오는 중입니다…</p>
     <main id="pdsApp" class="pds-paper" aria-busy="true"></main>
-    <details class="pds-card backup-panel"><summary>백업 파일로 복원하기</summary><p class="subtle">이 HTML 버전에서 내보낸 JSON 백업을 복원합니다. 현재 Plan–Do–See 기록은 선택한 백업으로 교체됩니다. 종이 다이어리의 메모는 변경하지 않습니다.</p>
+    <details class="pds-card backup-panel"><summary>백업 파일로 복원하기</summary><p class="subtle">계획·실행·회고에서 내보낸 JSON 백업을 복원합니다. 현재 Plan–Do–See 기록은 선택한 백업으로 교체됩니다. 종이 다이어리의 메모는 변경하지 않습니다.</p>
       <form id="importForm"><label class="pds-field"><span>백업 JSON 파일</span><input name="backup" type="file" accept=".json,application/json" required></label><label class="delete-confirm"><input name="confirm" type="checkbox" required> 현재 기록을 백업했고, 선택한 파일로 교체하겠습니다.</label><button class="pds-button">백업 복원</button></form>
     </details>
-    <footer class="pds-footer">서울 시간 · 시간 단위: 분 · 브라우저 IndexedDB 저장 · GitHub Pages 버전<br>서버 DB 저장은 아직 연결되지 않아 과제의 서버 영속화 조건은 충족하지 않습니다.</footer>
+    <section id="diaryAccount" aria-label="계정 및 사용 기록"></section>
+    <footer class="pds-footer">서울 시간 · 계정별 서버 저장</footer>
   </div>
 </body>
 </html>

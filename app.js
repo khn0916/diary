@@ -1,11 +1,11 @@
 'use strict';
-const STORAGE_KEY = 'yeobaek.diary.v1.' + window.diaryAccountId;
+const cloud = window.DiaryCloud;
 const openedAt = new Date();
 let shown = new Date(openedAt.getFullYear(), openedAt.getMonth(), 1);
 let renderedToday = '';
 let midnightTimer;
 let selectedKey = '';
-let store = { entries: {}, notes: {} };
+let store = journalDocument(cloud.initialJournal);
 let calendarPlans = [];
 let calendarPlanLanes = 0;
 const previewSegments = new Intl.Segmenter('ko', { granularity: 'grapheme' });
@@ -40,45 +40,67 @@ const monthIcons = [
   // December: Christmas tree
   'm16 5 6 8h-3l6 7h-4l5 5H6l5-5H7l6-7h-3l6-8Zm-2 20v4h4v-4m-7-8h.01m7 4h.01m1-9h.01'
 ];
-let storageReadable = true;
-const recordPrefix = STORAGE_KEY + '.';
-function applyStoredRecord(storageKey, raw) {
-  const match = /^(entries|notes)\.(\d{4,}-\d{2}(?:-\d{2})?)$/.exec(storageKey.slice(recordPrefix.length));
-  if (!match || !storageKey.startsWith(recordPrefix)) return;
-  const [, kind, key] = match;
-  if ((kind === 'entries') !== (key.split('-').length === 3)) return;
-  const value = raw === null ? null : JSON.parse(raw);
-  if (value === null) delete store[kind][key];
-  else if (kind === 'notes' && typeof value === 'string') store.notes[key] = value;
-  else if (kind === 'entries' && value && typeof value.text === 'string' && typeof value.mood === 'string') store.entries[key] = value;
+const noteDrafts = new Map();
+let noteTimer, noteWrites = Promise.resolve(), journalWrites = Promise.resolve(), entrySaving = false;
+
+function journalDocument(value) {
+  return { entries: value?.entries || {}, notes: value?.notes || {} };
 }
-try {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    const data = JSON.parse(raw);
-    if (!data || typeof data.entries !== 'object' || !data.entries || Array.isArray(data.entries) || typeof data.notes !== 'object' || !data.notes || Array.isArray(data.notes)) throw new Error('Invalid diary data');
-    store = data;
-  }
-  // Per-record values override the old document, including deletion markers.
-  for (let index = 0; index < localStorage.length; index++) {
-    const key = localStorage.key(index);
-    if (key?.startsWith(recordPrefix)) applyStoredRecord(key, localStorage.getItem(key));
-  }
-} catch {
-  storageReadable = false;
-  $('saveStatus').textContent = '저장된 기록을 읽지 못했습니다. 저장소 설정을 확인하세요.';
-}
+
 function persist(kind, key, value) {
-  if (!storageReadable) return false;
+  const write = journalWrites.catch(() => {}).then(async () => {
+    const { state } = await cloud.update('journal', current => {
+      const content = journalDocument(current);
+      if (value === null) delete content[kind][key];
+      else content[kind][key] = value;
+      return { content };
+    });
+    journalRead++;
+    store = state;
+  });
+  journalWrites = write;
+  return write;
+}
+
+function flushNotes() {
+  clearTimeout(noteTimer);
+  noteTimer = undefined;
+  const write = noteWrites.catch(() => {}).then(async () => {
+    for (const [key, draft] of noteDrafts) {
+      await persist('notes', key, draft || null);
+      if (noteDrafts.get(key) === draft) noteDrafts.delete(key);
+    }
+    if (!noteDrafts.size) $('saveStatus').textContent = '기록이 서버에 저장되었어요.';
+  });
+  noteWrites = write;
+  return write;
+}
+window.savePendingDiaryNotes = flushNotes;
+window.addEventListener('beforeunload', event => {
+  if (!noteDrafts.size && !entrySaving) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+async function saveEntry(value) {
+  if (entrySaving) return;
+  entrySaving = true;
+  const key = selectedKey, dialog = $('entryDialog'), submit = $('entryForm').querySelector('[type=submit]');
+  submit.disabled = $('deleteEntry').disabled = true;
+  $('dialogStatus').textContent = '서버에 저장하는 중이에요…';
   try {
-    localStorage.setItem(recordPrefix + kind + '.' + key, JSON.stringify(value));
-    $('saveStatus').textContent = '기록이 저장되었어요';
-    return true;
-  } catch {
-    $('saveStatus').textContent = '저장 공간을 확인해주세요. 현재 기록은 임시 보관 중입니다.';
-    return false;
+    await persist('entries', key, value);
+    refreshDiaryDisplay();
+    if (dialog.open && selectedKey === key) dialog.close();
+    $('saveStatus').textContent = '기록이 서버에 저장되었어요.';
+  } catch (error) {
+    if (selectedKey === key) $('dialogStatus').textContent = error.message;
+  } finally {
+    entrySaving = false;
+    submit.disabled = $('deleteEntry').disabled = false;
   }
 }
+
 function render() {
   const todayKey = keyOf(new Date());
   renderedToday = todayKey;
@@ -92,7 +114,7 @@ function render() {
   $('navDate').textContent = `${year}. ${String(month+1).padStart(2,'0')}`;
   $('pageNumber').textContent = `${String(month*2+1).padStart(2,'0')} — ${String(month*2+2).padStart(2,'0')}`;
   const monthlyNote = $('monthlyNote');
-  const noteText = typeof store.notes[monthKey()] === 'string' ? store.notes[monthKey()] : '';
+  const noteText = noteDrafts.get(monthKey()) ?? store.notes[monthKey()] ?? '';
   if (monthlyNote.value !== noteText) monthlyNote.value = noteText;
   const fragment = document.createDocumentFragment();
   const firstDay = new Date(year,month,1).getDay();
@@ -256,31 +278,25 @@ $('days').addEventListener('click', event => {
 $('previousMonth').addEventListener('click', () => { if (pageTurn) return; shown = new Date(shown.getFullYear(),shown.getMonth()-1,1); render(); });
 $('nextMonth').addEventListener('click', () => { if (pageTurn) return; shown = new Date(shown.getFullYear(),shown.getMonth()+1,1); render(); });
 $('todayButton').addEventListener('click', () => { if (pageTurn) return; const today = new Date(); shown = new Date(today.getFullYear(),today.getMonth(),1); render(); const cell = document.querySelector('.day.today'); cell?.focus({preventScroll:true}); cell?.scrollIntoView({block:'nearest',inline:'center'}); });
+function reportNoteError(error) { $('saveStatus').textContent = error.message; }
 $('monthlyNote').addEventListener('input', () => {
-  const key = monthKey();
-  const note = $('monthlyNote').value;
-  store.notes[key] = note;
-  persist('notes', key, note);
+  noteDrafts.set(monthKey(), $('monthlyNote').value);
+  $('saveStatus').textContent = '저장하는 중이에요…';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => flushNotes().catch(reportNoteError), 450);
 });
-$('closeDialog').addEventListener('click', () => $('entryDialog').close());
+$('monthlyNote').addEventListener('blur', () => {
+  if (noteDrafts.size) flushNotes().catch(reportNoteError);
+});
+$('closeDialog').addEventListener('click', () => { if (!entrySaving) $('entryDialog').close(); });
+$('entryDialog').addEventListener('cancel', event => { if (entrySaving) event.preventDefault(); });
 $('entryForm').addEventListener('submit', event => {
   event.preventDefault();
   const text = $('entryText').value.trim();
   const mood = document.querySelector('input[name="mood"]:checked')?.value || '';
-  const entry = text || mood ? { text, mood } : null;
-  if (entry) store.entries[selectedKey] = entry;
-  else delete store.entries[selectedKey];
-  const saved = persist('entries', selectedKey, entry);
-  render();
-  if (saved) $('entryDialog').close();
-  else $('dialogStatus').textContent = '브라우저에 저장하지 못했습니다. 이 창의 기록을 복사해 보관해주세요.';
+  saveEntry(text || mood ? { text, mood } : null);
 });
-$('deleteEntry').addEventListener('click', () => {
-  delete store.entries[selectedKey];
-  const saved = persist('entries', selectedKey, null); render();
-  if (saved) $('entryDialog').close();
-  else $('dialogStatus').textContent = '삭제 내용을 저장하지 못했습니다. 저장소 설정을 확인해주세요.';
-});
+$('deleteEntry').addEventListener('click', () => saveEntry(null));
 function refreshDiaryDisplay() {
   if (pageTurn) pageTurn.refreshDiary = true;
   else render();
@@ -297,16 +313,20 @@ window.addEventListener('focus', scheduleDateRefresh);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) scheduleDateRefresh();
 });
-window.addEventListener('storage', event => {
-  if (!storageReadable || !event.key?.startsWith(recordPrefix) || event.storageArea !== localStorage) return;
+let journalRead = 0;
+async function refreshJournal() {
+  const request = ++journalRead;
   try {
-    // Read the latest value in case another write replaced the queued event.
-    applyStoredRecord(event.key, localStorage.getItem(event.key));
+    const saved = await cloud.read('journal');
+    if (request !== journalRead || entrySaving || noteDrafts.size) return;
+    store = journalDocument(saved.content);
     refreshDiaryDisplay();
-  } catch {
-    $('saveStatus').textContent = '다른 탭에서 저장한 기록을 불러오지 못했어요.';
+  } catch (error) {
+    if (request === journalRead) $('saveStatus').textContent = error.message;
   }
-});
+}
+window.addEventListener('focus', refreshJournal);
+cloud.journalChannel?.addEventListener('message', refreshJournal);
 // Reflect the lifted portion of a paper sheet across the crease between its
 // original corner and the pointer. The next month is revealed underneath.
 const book = document.querySelector('.book');

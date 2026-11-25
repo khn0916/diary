@@ -21,13 +21,13 @@
     });
     try { return await connection; } catch (error) { connection = null; throw error; }
   }
-  async function transaction(command, replacement) {
+  async function transaction(command, replacement, key = documentKey) {
     const db = await open();
     return new Promise((resolve, reject) => {
       let result, failure;
       const tx = db.transaction('documents', command || replacement ? 'readwrite' : 'readonly');
       const store = tx.objectStore('documents');
-      const request = store.get(documentKey);
+      const request = store.get(key);
       request.onsuccess = () => {
         try {
           const current = replacement ? null : request.result ? PDSModel.validate(request.result) : PDSModel.empty();
@@ -39,5 +39,5 @@
       tx.onabort = tx.onerror = () => reject(failure || new Error('저장하지 못했습니다. 입력 내용을 보관하고 저장 공간을 확인해주세요.'));
     });
   }
-  window.PDSStorage = { read: () => transaction(), write: command => transaction(command), restore: data => transaction(null, data), channel };
+  window.PDSStorage = { read: () => transaction(), write: command => transaction(command), restore: data => transaction(null, data), readBrowserCopy: legacy => transaction(null, null, legacy ? 'current' : documentKey), channel };
 })();
