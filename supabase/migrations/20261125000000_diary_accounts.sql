@@ -30,8 +30,7 @@ begin
 end
 $$;
 revoke all on function yeobaek_private.record_password_change() from public, anon, authenticated;
-drop trigger if exists yeobaek_password_change on auth.users;
-create trigger yeobaek_password_change
+create or replace trigger yeobaek_password_change
 after update of encrypted_password on auth.users for each row
 when (old.encrypted_password is distinct from new.encrypted_password)
 execute function yeobaek_private.record_password_change();
