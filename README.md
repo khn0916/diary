@@ -91,6 +91,12 @@ Supabase Auth와 `@supabase/supabase-js` 2.119.2를 사용합니다. 인증은 �
 
 통과 기준은 같은 계정에서 이관한 기록이 보이고, 5일 전체 및 변경 전후의 합계·평균을 손계산과 대조할 수 있는 것입니다. **5일 사용 기록 → 집계와 근거 기록 보기**를 열면 기존 실행·회고 화면에서 같은 5일 집계 및 일별 실행 근거를 확인할 수 있습니다. 로그아웃 상태나 만료된 세션의 자료 요청은 401이며, 화면은 다시 로그인을 요청합니다. 테스트용 기록은 실제 사용 기록으로 제출하지 않습니다.
 
+## Vercel 배포
+
+Vercel은 GitHub의 `main` 브랜치에서 `node build-vercel.cjs`를 실행하고 `dist/`의 웹 파일을 게시합니다. GitHub Pages와 Vercel은 같은 Supabase 프로젝트의 계정과 서버 기록을 사용합니다. 호스트마다 브라우저 저장소가 구분되므로 새 주소에서는 다시 로그인합니다. GitHub Pages 브라우저에만 남아 있는 이전 기록은 그 주소에서 계정으로 옮긴 후 Vercel에서 열 수 있습니다.
+
+이메일 확인을 사용할 때는 Supabase Auth의 Redirect URLs에 Vercel 운영 주소와 기존 GitHub Pages 주소를 각각 정확히 등록합니다.
+
 ## 이전 Python·SQLite 구현 (보존)
 
 Python·SQLite 서버 코드는 삭제하지 않고 별도로 보존합니다. `style.css`, `app.js`는 그대로이며, 기존 `index.html`에는 HTML 과제 화면으로 가는 탐색 링크와 링크용 CSS만 추가했습니다. 아래 Python 주소는 선택적으로 로컬 서버를 실행할 때 사용하는 주소입니다.

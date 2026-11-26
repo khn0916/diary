@@ -11,3 +11,5 @@ data/
 *.sqlite3-*
 *.db
 .venv/
+/dist/
+/.vercel/

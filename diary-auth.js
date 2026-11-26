@@ -105,7 +105,7 @@
   async function register(credentials) {
     const { data, error } = await auth.signUp({
       ...credentials,
-      options: { emailRedirectTo: 'https://khn0916.github.io/diary/' }
+      options: { emailRedirectTo: root.href }
     });
     if (!error && data.session && data.user) {
       await unlock(data.user);
