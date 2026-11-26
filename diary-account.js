@@ -12,10 +12,10 @@
     `<form class="pds-form" data-study="${action}">${input}<button class="pds-button">${label}</button></form>`;
 
   panel.innerHTML = `
-    <details class="pds-card backup-panel" id="diaryStudy">
-      <summary>5일 사용 기록</summary>
+    <section class="pds-card backup-panel" id="diaryStudy" aria-labelledby="diaryStudyTitle">
+      <h2 id="diaryStudyTitle">5일 사용 기록</h2>
       <div data-study-view aria-live="polite"></div>
-    </details>
+    </section>
     <details class="pds-card backup-panel">
       <summary>계정과 전체 기록</summary>
       <form class="pds-form" data-diary-action="import">
@@ -49,6 +49,7 @@
   const view = panel.querySelector('[data-study-view]');
   const status = panel.querySelector('#accountStatus');
   let recordsRequest = 0;
+  let studyRequest = 0;
 
   function totals(days, unit) {
     const values = days.map(day => day.value).filter(value => value !== null);
@@ -64,13 +65,16 @@
       이유 · ${escape(change.reason)}<br>${escape(seoulTime.format(new Date(change.changed_at)))} · 근거 날짜 ${escape(change.based_on.join(', '))}</p>` : '';
   }
 
-  function studyEntries(record) {
-    if (!record.days.length) return '<p class="subtle">아직 저장한 일별 기록이 없어요.</p>';
-    const unit = escape(record.unit);
-    return `<ol>${record.days.map(day => {
+  function studyEntries(record, showPending = false) {
+    const days = record?.days || [], unit = escape(record?.unit);
+    if (!days.length && !showPending) return '<p class="subtle">아직 저장한 일별 기록이 없어요.</p>';
+    const rows = showPending ? Array.from({ length: 5 }, (_, i) => days[i]) : days;
+    return `<ol class="study-days">${rows.map((day, index) => {
+      const label = `<strong>${index + 1}일차</strong><span>${index < 2 ? '변경 전' : '변경 후'}</span>`;
+      if (!day) return `<li class="study-day">${label}<span class="subtle">기록 대기</span></li>`;
       const sources = day.sources?.map(source => `<li><a href="#plan=${encodeURIComponent(record.plan_id)}&amp;task=${encodeURIComponent(source.task_id)}&amp;execution=${encodeURIComponent(source.id)}">${escape(source.title)}</a> · 실행 #${escape(source.id)} · ${escape(source.minutes)}분</li>`).join('');
-      return `<li><time datetime="${escape(day.date)}">${escape(day.date)}</time> · ${day.value === null ? '결측' : escape(day.value) + ' ' + unit}${day.evidence ? ' · ' + escape(day.evidence) : ''}
-        ${sources ? `<ul>${sources}</ul>` : day.sources ? '<p class="subtle">해당 날짜의 실행 기록이 없어요.</p>' : ''}</li>`;
+      return `<li class="study-day">${label}<span><time datetime="${escape(day.date)}">${escape(day.date)}</time> · ${day.value === null ? '결측' : escape(day.value) + ' ' + unit}</span>
+        ${sources ? `<ul>${sources}</ul>` : ''}${day.evidence ? `<p class="subtle">${escape(day.evidence)}</p>` : ''}</li>`;
     }).join('')}</ol>`;
   }
 
@@ -106,26 +110,10 @@
     }
   }
 
-  function renderStudy(record, plans = []) {
+  function renderStudy(record) {
     if (!record) {
-      const useExecutions = plans.length > 0;
-      const planOptions = plans.map(plan => `<option value="${plan.id}">${escape(plan.title)}</option>`).join('');
-      view.innerHTML = studyForm('start',
-        textField('답하려는 질문', 'question') +
-        `<label class="pds-field"><span>관찰 지표 입력 방식</span><select name="mode">
-          <option value="execution"${useExecutions ? '' : ' disabled'}>계획의 실행 시간 불러오기</option>
-          <option value="manual"${useExecutions ? '' : ' selected'}>다른 지표 직접 입력</option>
-        </select></label>
-        <div data-study-execution${useExecutions ? '' : ' hidden'}>
-          <label class="pds-field"><span>실행 기록을 가져올 계획</span><select name="plan_id"${useExecutions ? ' required' : ' disabled'}>${planOptions}</select></label>
-          <p class="subtle">선택한 계획의 실행 노트에서 서울 기준 당일에 시작한 기록을 가져와 실제 시간(분)을 더해요. 5일 동안 같은 계획을 사용해요.</p>
-        </div>
-        ${useExecutions ? '' : '<p class="subtle">실행 시간을 가져오려면 먼저 계획 메모를 등록해주세요.</p>'}
-        <div data-study-manual${useExecutions ? ' hidden' : ''}>
-          ${textField('관찰 지표 하나', 'metric') + textField('단위', 'unit', 32) + textField('값 계산 방법', 'calculation', 500)}
-        </div>` +
-        textField('처음 적용할 계획 규칙', 'rule', 500), '1일차 기준 저장');
-      if (useExecutions) view.querySelectorAll('[data-study-manual] input').forEach(input => { input.disabled = true; });
+      view.innerHTML = `<p class="subtle">실행 노트에 오늘 한 작업을 저장하면 이 목록이 자동으로 채워져요. 첫 실행을 저장한 계획으로 5일을 관찰해요.</p>
+        <p><a href="#view=records" data-open-study-records>실행 기록 열기 ↗</a></p>${studyEntries(null, true)}`;
       return;
     }
     const unit = escape(record.unit), days = record.days;
@@ -138,44 +126,47 @@
       <p>처음 계획 규칙 · ${escape(record.rule)}</p>
       <p class="subtle">서울 시간 기준 · 주 시작 월요일 · 하루에 한 번 기록 · 결측은 합계와 평균에서 제외 · 음수 및 입력 범위 밖 값은 거절하고 범위 안 값은 근거와 함께 보존 · 소수점 둘째 자리 반올림</p>`;
     const action = days.length === 2 && !changed
-      ? studyForm('change', textField('새 계획 규칙 한 가지', 'rule', 500) + textField('바꾸는 이유', 'reason', 500), '규칙 변경 기록')
-      : days.length < 5 ? studyForm('record', linked ?
-        `<p class="subtle">저장할 때 선택한 계획의 오늘 실행 기록과 합계를 가져와 근거로 남겨요. 실행 기록이 없으면 결측으로 남겨요.</p>
-          <label class="delete-confirm"><input type="checkbox" name="zero"> 실행 기록이 없고 실제 작업 시간이 0분이에요</label>` :
+      ? '<p class="subtle">3일차 작업을 시작하기 전에 계획 규칙 하나를 바꿔주세요.</p>' +
+        studyForm('change', textField('새 계획 규칙 한 가지', 'rule', 500) + textField('바꾸는 이유', 'reason', 500), '규칙 변경 기록')
+      : days.length === 5 ? '<p>5일 사용 기록이 완료되었어요.</p>'
+      : linked ? '<p class="subtle">같은 계획의 실행 노트에 작업을 저장하면 목록과 집계가 자동으로 갱신돼요.</p>'
+      : studyForm('record',
         `<label class="pds-field"><span>오늘 관찰한 값 (${unit})</span><input name="value" type="number" min="0" max="999999999.9999" step="0.0001" required></label>
-          <label class="delete-confirm"><input type="checkbox" name="missing"> 오늘 값이 없어 결측으로 남기기</label>`, `${days.length + 1}일차 기록`) : '<p>5일 사용 기록이 완료되었어요.</p>';
-    view.innerHTML = `${intro}${studyChange(changed)}<h3>일별 근거 기록</h3>${studyEntries(record)}
+          <label class="delete-confirm"><input type="checkbox" name="missing"> 오늘 값이 없어 결측으로 남기기</label>`, `${days.length + 1}일차 기록`);
+    view.innerHTML = `${studyEntries(record, true)}${intro}${studyChange(changed)}
       <h3>실사용 집계</h3>${studyComparison(record)}${action}`;
   }
 
+  function acceptStudy(record) {
+    ++studyRequest;
+    const draft = view.querySelector('form[data-study="change"]');
+    const rule = draft?.elements.rule.value, reason = draft?.elements.reason.value;
+    renderStudy(record);
+    const currentForm = view.querySelector('form[data-study="change"]');
+    if (draft && currentForm) {
+      currentForm.elements.rule.value = rule;
+      currentForm.elements.reason.value = reason;
+    }
+    updatePlanStudy(record);
+  }
+
   async function refreshStudy() {
+    const request = ++studyRequest;
     try {
-      view.textContent = '사용 기록을 불러오는 중이에요…';
       const { content } = await cloud.read('study');
-      const plans = content ? [] : (await PDSStorage.read()).state.plans.filter(plan => !plan.deleted_at);
-      renderStudy(content, plans);
+      if (request === studyRequest) acceptStudy(content);
     } catch (error) {
-      view.textContent = error.message;
+      if (request === studyRequest) status.textContent = error.message;
     }
   }
 
-  study.addEventListener('toggle', () => { if (study.open) refreshStudy(); });
   document.addEventListener('click', event => {
     if (event.target.closest('[data-open-study-records]')) document.getElementById('pdsApp').scrollIntoView({ block: 'start' });
     if (!event.target.closest('#openDiaryStudy, [data-open-diary-study]')) return;
-    study.open = true;
     study.scrollIntoView({ block: 'start' });
+    refreshStudy();
   });
   panel.addEventListener('change', event => {
-    if (event.target.name === 'mode') {
-      const linked = event.target.value === 'execution';
-      const execution = event.target.form.querySelector('[data-study-execution]');
-      const manual = event.target.form.querySelector('[data-study-manual]');
-      execution.hidden = !linked;
-      execution.querySelector('select').disabled = !linked;
-      manual.hidden = linked;
-      manual.querySelectorAll('input').forEach(input => { input.disabled = linked; });
-    }
     if (event.target.name !== 'missing') return;
     const field = event.target.form.elements.value;
     field.disabled = event.target.checked;
@@ -192,7 +183,6 @@
   }
 
   const studyErrors = {
-    start: '1일차 기준이 이미 저장되었거나 입력이 비어 있어요.',
     record: '같은 날짜는 한 번만 기록할 수 있어요. 3일차 전 규칙 변경과 필수 입력도 확인해주세요.',
     change: '계획 규칙은 2일차 이후, 3일차 전에 한 번 바꿀 수 있어요. 새 규칙과 이유를 확인해주세요.'
   };
@@ -210,8 +200,7 @@
       if (form.dataset.study) {
         if (form.dataset.study === 'record' && values.missing) values.value = null;
         const record = await cloud.study(form.dataset.study, values);
-        renderStudy(record);
-        updatePlanStudy(record);
+        acceptStudy(record);
         status.textContent = '사용 기록을 저장했어요.';
       } else if (action === 'import') {
         const count = await cloud.importFromBrowser(values.kind, values.source === 'legacy');
@@ -238,5 +227,7 @@
       button.disabled = false;
     }
   });
-  window.DiaryStudy = { updatePlanStudy };
+  window.DiaryStudy = { updatePlanStudy, acceptStudy };
+  renderStudy(null);
+  refreshStudy();
 })();

@@ -5,8 +5,8 @@ const { PGlite } = require(process.env.DIARY_PGLITE || '@electric-sql/pglite');
 
 async function main() {
   const db = new PGlite();
-  const owners = ['a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000002'];
-  const sessions = ['10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002'];
+  const owners = ['a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000002', 'c0000000-0000-4000-8000-000000000003'];
+  const sessions = ['10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000003'];
   await db.exec(`
     create role anon;
     create role authenticated;
@@ -20,6 +20,7 @@ async function main() {
     grant usage on schema auth to anon, authenticated;
   `);
   await db.exec(fs.readFileSync('supabase/migrations/20261125000000_diary_accounts.sql', 'utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20261126000000_diary_automatic_study.sql', 'utf8'));
   for (const [i, owner] of owners.entries()) {
     await db.query('insert into auth.users values ($1, $2)', [owner, 'mock-hash-' + i]);
     await db.query('insert into auth.sessions (id,user_id) values ($1,$2)', [sessions[i], owner]);
@@ -110,6 +111,52 @@ async function main() {
   const changed = await study('change', { rule: 'after', reason: 'fixture comparison' });
   assert.deepEqual(changed.change.based_on, [dates.earlier, dates.yesterday]);
   assert.equal((await study('record', { zero: 'on' })).days[2].value, 0);
+
+  const saveObserved = (version, content, id = null) =>
+    db.query('select public.diary_save_observed_plan($1,$2,$3) as result', [version, content, id]).then(r => r.rows[0].result);
+  await asUser(null);
+  await rejects(saveObserved(0, ownPlans, 10), '42501');
+  await asUser(2);
+  const run = (id, task_id, minutes, day = dates.today) => ({
+    id, task_id, actual_minutes: minutes, started_at: day + 'T00:00:00+09:00', ended_at: day + 'T00:00:00+09:00'
+  });
+  const observedPlans = { ...ownPlans, executions: [run(21, 3, 15, dates.yesterday), run(22, 3, 15)] };
+  assert.equal(await saveObserved(0, observedPlans, 21), null);
+  const day1 = await saveObserved(1, observedPlans, 22);
+  assert.equal(day1.plan_id, 1);
+  assert.equal(day1.days.length, 1);
+  assert.equal(day1.days[0].value, 15);
+  assert.deepEqual(day1.days[0].sources.map(r => r.id), [22]);
+  observedPlans.executions.push(run(23, 3, 20), run(24, 4, 100));
+  await rejects(saveObserved(1, observedPlans, 23), 'PT409');
+  assert.equal((await rpc('get','study')).content.days[0].value, 15);
+  const sameDay = await saveObserved(2, observedPlans, 23);
+  assert.equal(sameDay.days.length, 1);
+  assert.equal(sameDay.days[0].value, 35);
+  assert.equal(sameDay.days[0].recorded_at, day1.days[0].recorded_at);
+  observedPlans.executions[2].deleted_at = dates.today;
+  assert.equal((await saveObserved(3, observedPlans)).days[0].value, 15);
+  await db.exec('reset role');
+  await db.query("update yeobaek_private.documents set content = jsonb_set(content, '{days,0,date}', to_jsonb($2::text)) where owner_id = $1 and kind = 'study'", [owners[2], dates.earlier]);
+  await asUser(2);
+  assert.equal((await saveObserved(4, observedPlans, 24)).days.length, 1);
+  const day2 = await saveObserved(5, observedPlans, 22);
+  assert.equal(day2.days.length, 2);
+  await db.exec('reset role');
+  await db.query("update yeobaek_private.documents set content = jsonb_set(content, '{days,1,date}', to_jsonb($2::text)) where owner_id = $1 and kind = 'study'", [owners[2], dates.yesterday]);
+  await asUser(2);
+  observedPlans.executions.push(run(25, 3, 25));
+  assert.equal((await saveObserved(6, observedPlans, 25)).days.length, 2);
+  assert.equal((await rpc('get','plans')).version, 7);
+  await study('change', { rule: 'First task', reason: 'actual comparison' });
+  const { rows: [times] } = await db.query("select date_trunc('minute', clock_timestamp()) as current_minute, clock_timestamp() as now");
+  observedPlans.executions.push({ ...run(26, 3, 12), started_at: times.current_minute, ended_at: times.now });
+  const day3 = await saveObserved(7, observedPlans, 26);
+  assert.equal(day3.days.length, 3);
+  assert.equal(day3.days[2].value, 12);
+  assert.deepEqual(day3.days[2].sources.map(r => r.id), [26]);
+  await db.exec('reset role');
+  await db.query('delete from auth.users where id=$1', [owners[2]]);
 
   await db.exec('reset role');
   await db.query('delete from auth.sessions where id=$1',[sessions[0]]);

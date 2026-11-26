@@ -28,14 +28,18 @@
     return request('get', kind);
   }
 
-  async function update(kind, change) {
+  async function update(kind, change, saveObservation = false) {
     for (let attempt = 0; attempt < 5; attempt++) {
       const current = await read(kind);
       const { content, id } = change(current.content);
       try {
-        await request('put', kind, { expected_version: current.version, document_content: content });
+        const fields = { expected_version: current.version, document_content: content };
+        const study = saveObservation ? await call('diary_save_observed_plan', {
+          ...fields, execution_id: saveObservation === 'execution' ? id : null
+        }) : undefined;
+        if (!saveObservation) await request('put', kind, fields);
         (kind === 'journal' ? journalChannel : legacyPlans.channel)?.postMessage('saved');
-        return { state: content, id };
+        return { state: content, id, study };
       } catch (error) {
         if (error.status !== 409 || attempt === 4) throw error;
       }
@@ -84,10 +88,12 @@
     read: async () => ({ state: planState((await read('plans')).content) }),
     write: command => {
       const now = new Date().toISOString();
+      const observe = command.type === 'execution.save' ? 'execution' :
+        command.type === 'delete' && ['execution', 'task', 'plan'].includes(command.data.kind);
       return update('plans', value => {
         const result = PDSModel.apply(planState(value), command, now);
         return { content: result.state, id: result.id };
-      });
+      }, observe);
     },
     restore: data => update('plans', () => ({ content: PDSModel.validate(data) }))
   };

@@ -44,7 +44,7 @@
     await load('pds-model.js?v=5');
     await load('pds-storage.js?v=3');
     window.diaryDatabase = client;
-    await load('diary-cloud.js?v=1');
+    await load('diary-cloud.js?v=2');
     try {
       const saved = await window.DiaryCloud.read(journal ? 'journal' : 'plans');
       if (journal) window.DiaryCloud.initialJournal = saved.content;
@@ -61,8 +61,8 @@
       await load('holidays.js?v=1');
       await load('app.js?v=15');
     } else {
-      await load('diary-account.js?v=4');
-      await load('pds-web.js?v=18');
+      await load('diary-account.js?v=5');
+      await load('pds-web.js?v=19');
     }
   }
 

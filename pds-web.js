@@ -144,6 +144,7 @@
           </header>
           <p class="memo-dates memo-reveal"><time>${e(plan.start_date)}</time> – <time>${e(plan.end_date)}</time></p>
           <p class="memo-priority memo-reveal">우선순위 ${priorities[plan.priority]}</p>
+          <p class="subtle"><a href="${e(url({ view: 'records', plan: plan.id }))}" data-open-memo-records>실행 기록 열기 ↗</a></p>
           <div class="memo-stamp-slot">${memoStamp(plan.completion)}</div>${error}
           ${tags.length ? `<ul class="memo-tags" aria-label="해시태그">${tags.map(tag => `<li>#${e(tag)}</li>`).join('')}</ul>` : ''}
           <div class="plan-form-actions memo-actions">
@@ -209,7 +210,8 @@
   function taskPage(id) {
     const task = M.find(state, 'tasks', id), records = state.executions.filter(r => r.task_id === task.id && !r.deleted_at).sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id);
     const logs = records.map(r => `<article class="history-item" id="execution-${r.id}" tabindex="-1"><h3>실행 #${r.id} · ${r.actual_minutes}분</h3><p>${e(localDate(r.started_at))} → ${e(localDate(r.ended_at))} (서울)</p><p class="preserve-lines">막힘 사유: ${e(r.blocked_reason || '없음')}</p><details><summary>실행 기록 수정</summary>${form('execution.save', executionFields(task.id, r), '실행 수정')}</details>${deletion('execution', r.id, task.plan_id, task.id)}</article>`).join('');
-    return heading('실행 노트') + `<a href="${e(url({ plan: task.plan_id, metric: 'planned' }))}" data-scroll-evidence>← 계획 #${task.plan_id}의 근거 기록으로</a><section class="pds-card"><h2>할 일 #${task.id} · ${e(task.title)}</h2><p>예상 ${task.estimated_minutes}분 · 실제 합계 ${records.reduce((n, r) => n + r.actual_minutes, 0)}분 · 연결 계획 #${task.plan_id}</p>${form('task.save', taskFields(task.plan_id, task), '할 일 수정')}${deletion('task', task.id, task.plan_id)}</section><div class="pds-two"><section class="pds-card"><h2>실제 실행 기록하기</h2>${form('execution.save', executionFields(task.id), '실행 기록 저장')}</section><section class="pds-card"><h2>연결된 실행 기록</h2>${logs || '<p class="subtle">아직 실행 기록이 없습니다.</p>'}</section></div>`;
+    return heading('실행 노트', '<button type="button" class="pds-button" data-open-diary-study>5일 사용 기록</button>') +
+      `<a href="${e(url({ plan: task.plan_id, metric: 'planned' }))}" data-scroll-evidence>← 계획 #${task.plan_id}의 근거 기록으로</a><section class="pds-card"><h2>할 일 #${task.id} · ${e(task.title)}</h2><p>예상 ${task.estimated_minutes}분 · 실제 합계 ${records.reduce((n, r) => n + r.actual_minutes, 0)}분 · 연결 계획 #${task.plan_id}</p>${form('task.save', taskFields(task.plan_id, task), '할 일 수정')}${deletion('task', task.id, task.plan_id)}</section><div class="pds-two"><section class="pds-card"><h2>실제 실행 기록하기</h2>${form('execution.save', executionFields(task.id), '실행 기록 저장')}</section><section class="pds-card"><h2>연결된 실행 기록</h2>${logs || '<p class="subtle">아직 실행 기록이 없습니다.</p>'}</section></div>`;
   }
   function message(text, error = false) { status.textContent = text; status.classList.toggle('is-error', error); if (error) status.scrollIntoView({ block: 'nearest' }); }
   function render() {
@@ -272,6 +274,7 @@
     try {
       const result = await storage.write({ type, data });
       state = result.state;
+      if (result.study !== undefined) window.DiaryStudy?.acceptStudy(result.study);
       composer?.close();
       if (memo) {
         if (!memo.isConnected) return;
@@ -337,7 +340,7 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
         return;
       }
-      if (event.target === memo || event.target.closest('[data-close-memo]')) memo.close();
+      if (event.target === memo || event.target.closest('[data-close-memo], [data-open-memo-records]')) memo.close();
       if (event.target.closest('[data-edit-memo], [data-cancel-memo]')) {
         showMemo(M.find(state, 'plans', memo.dataset.planId), { editing: Boolean(event.target.closest('[data-edit-memo]')) });
       }
