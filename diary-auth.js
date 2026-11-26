@@ -59,7 +59,7 @@
     }
     if (journal) {
       await load('holidays.js?v=1');
-      await load('app.js?v=15');
+      await load('app.js?v=16');
     } else {
       await load('diary-account.js?v=5');
       await load('pds-web.js?v=19');

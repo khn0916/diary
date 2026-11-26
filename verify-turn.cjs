@@ -5,20 +5,21 @@ const vm = require('node:vm');
 class Element {
   constructor(){this.events={};this.style={setProperty(){}};this.classList={add(){},remove(){}};this.children=[];}
   addEventListener(type,handler){this.events[type]=handler;}
-  getBoundingClientRect(){return {left:0,top:0,width:1000,height:800};}
+  getBoundingClientRect(){return this.rect || {left:0,top:0,width:1000,height:800};}
   cloneNode(){return new Element();}
   querySelectorAll(){return [];}
   removeAttribute(){} setAttribute(){} append(...children){for(const child of children){child.parent=this;this.children.push(child);}} remove(){this.removed=true;} setPointerCapture(){}
 }
 const elements = Object.fromEntries(['turnPrevious','turnNext','turnStatus'].map(id=>[id,new Element()]));
 const book = new Element();
+book.offsetWidth = 1000;
 const body = new Element();
 const timers=new Map(),frames=new Map();
 let sequence=0,clock=0;
 const context=vm.createContext({
   console,Date,Math,shown:new Date(2026,10,1),render(){},$:id=>elements[id],
   document:{body,querySelector:()=>book,createElement:()=>new Element(),addEventListener(){}},
-  window:{addEventListener(){}},performance:{now:()=>clock},matchMedia:()=>({matches:false}),
+  window:new Element(),performance:{now:()=>clock},matchMedia:()=>({matches:false}),
   setTimeout:fn=>{const id=++sequence;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   requestAnimationFrame:fn=>{const id=++sequence;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id)
 });
@@ -54,4 +55,23 @@ const reflection=read('pageTurn.back.style.transform').slice(7,-1).split(',').ma
 assert(reflection[1]*1000+reflection[5]<0,'the lifted top corner must extend above the book');
 event('turnNext','pointercancel',500,760);settle();assert(floating.removed,'cancel must remove the floating sheet');
 assert(body.children.every(child=>child.removed),'no floating overlays may remain after turns');
-console.log('PASS: held/quick drag, both directions, rollback/cancellation, year boundary, duplicate gestures, complete lifted top corner outside clipping containers, floating-layer cleanup.');
+// Fractional paper scaling must not change the crease geometry or lift the lower spine.
+book.rect = { left: 35, top: 40, width: 750, height: 600 };
+for (const [corner, start] of [['turnNext',770],['turnPrevious',50]]) {
+  event(corner,'pointerdown',start,625); hold(); event(corner,'pointermove',410,75);
+  const turn = read('pageTurn');
+  assert.equal(turn.width,1000);
+  assert.equal(turn.height,800);
+  assert.equal(turn.floating.style.transform,'scale(0.75)');
+  assert.equal(turn.back.children[0].parent,turn.back);
+  const dx = (turn.direction === 1 ? turn.width : 0) - turn.x, dy = turn.height - turn.y;
+  assert(dx*dx+dy*dy <= turn.width*Math.abs(dx)+1e-7,'the crease must leave the lower spine attached');
+  event(corner,'pointerup',410,75); settle();
+  assert.equal(turn.shade.style.opacity,'0');
+  assert(turn.floating.removed);
+}
+assert.equal(month(),0);
+event('turnNext','pointerdown',770,625);hold();event('turnNext','pointermove',410,400);
+event('turnNext','pointerup',410,400);read('window.events.resize()');settle();
+assert.equal(month(),1,'resizing after release must preserve the committed turn');
+console.log('PASS: scaled turns, spine geometry, held and quick drags, rollback, year boundary, resize, and floating-layer cleanup.');

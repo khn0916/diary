@@ -330,7 +330,23 @@ cloud.journalChannel?.addEventListener('message', refreshJournal);
 // Reflect the lifted portion of a paper sheet across the crease between its
 // original corner and the pointer. The next month is revealed underneath.
 const book = document.querySelector('.book');
+const bookViewport = book.parentElement;
 let pageTurn = null;
+let fittedScale;
+function fitPaper() {
+  if (!bookViewport?.clientWidth || !book.offsetWidth) return;
+  const { paddingLeft, paddingRight } = getComputedStyle(bookViewport);
+  const available = bookViewport.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight);
+  const scale = Math.min(1, Math.max(860, available) / book.offsetWidth);
+  if (scale === fittedScale) return;
+  fittedScale = scale;
+  bookViewport.style.setProperty('--paper-scale', String(scale));
+}
+function paperDimensions(rect) {
+  const width = book.offsetWidth || rect.width;
+  const scale = rect.width / width;
+  return { width, height: rect.height / scale, scale };
+}
 function clipHalfPlane(points, midpoint, normal, keepCorner) {
   const result = [];
   const distance = p => (p.x-midpoint.x)*normal.x + (p.y-midpoint.y)*normal.y;
@@ -365,8 +381,8 @@ function liftPaper(turn) {
   turn.active = true;
   turn.stationary = copyPaper();
   turn.front = copyPaper();
-  turn.back = copyPaper();
-  turn.back.classList.add('turn-back');
+  turn.back = document.createElement('div');
+  turn.back.className = 'turn-back';
   turn.shade = document.createElement('div');
   turn.shade.className = 'turn-crease';
   turn.stage = document.createElement('div');
@@ -384,6 +400,9 @@ function liftPaper(turn) {
   turn.stationary.style.clipPath = turn.direction === 1 ? 'inset(0 50% 0 0)' : 'inset(0 0 0 50%)';
   shown = new Date(turn.original.getFullYear(),turn.original.getMonth()+turn.direction,1);
   render();
+  const incoming = copyPaper();
+  incoming.classList.add('turn-back-face');
+  turn.back.append(incoming);
   book.append(turn.stage);
   document.body.append(turn.floating);
   book.classList.add('turning');
@@ -396,15 +415,23 @@ function positionFloating(turn) {
   turn.floating.style.top=`${rect.top}px`;
   turn.floating.style.width=`${turn.width}px`;
   turn.floating.style.height=`${turn.height}px`;
+  turn.floating.style.transform=`scale(${turn.scale})`;
 }
 function drawPaper(turn,x,y) {
   positionFloating(turn);
   const {width:w,height:h} = turn;
   const cx = turn.direction === 1 ? w : 0;
   x = Math.max(0,Math.min(w,x));
-  y = Math.max(h*.1,Math.min(h-1,y));
+  y = Math.max(h*.1,Math.min(h,y));
   // At least a small curl makes the initial long press visible.
   if (Math.abs(cx-x)<2) x = cx-turn.direction*2;
+  // Keep the lower spine corner on the stationary side of the crease.
+  const radius = w / 2;
+  const reach = Math.hypot(x - radius, y - h);
+  if (reach > radius) {
+    x = radius + (x - radius) * radius / reach;
+    y = h + (y - h) * radius / reach;
+  }
   turn.x = x; turn.y = y;
   const dx = cx-x,dy = h-y,length = Math.hypot(dx,dy);
   const n = {x:dx/length,y:dy/length},m = {x:(cx+x)/2,y:(h+y)/2};
@@ -427,6 +454,7 @@ function finishPaper(commit) {
   clearTimeout(turn.holdTimer);
   if (!turn.active) { cleanupPaper(turn,false); return; }
   turn.settling = true;
+  turn.commit = commit;
   const fromX=turn.x,fromY=turn.y,cx=turn.direction===1?turn.width:0;
   const toX=commit?(turn.direction===1?0:turn.width):cx;
   const started=performance.now();
@@ -434,7 +462,13 @@ function finishPaper(commit) {
   function animate(now) {
     const t=duration?Math.min(1,(now-started)/duration):1;
     const ease=1-Math.pow(1-t,3);
-    drawPaper(turn,fromX+(toX-fromX)*ease,fromY+(turn.height-1-fromY)*ease);
+    drawPaper(turn,fromX+(toX-fromX)*ease,fromY+(turn.height-fromY)*ease);
+    if (commit) {
+      const fadeStart = .55;
+      const blend = Math.max(0,(t-fadeStart)/(1-fadeStart));
+      turn.back.style.setProperty('--turn-face-opacity', String(.065 + .935 * blend));
+      turn.shade.style.opacity = String(1 - blend);
+    }
     if (t<1) turn.frame=requestAnimationFrame(animate);
     else cleanupPaper(turn,commit);
   }
@@ -457,7 +491,9 @@ for (const [id,direction] of [['turnPrevious',-1],['turnNext',1]]) {
   corner.addEventListener('pointerdown',event=>{
     if (pageTurn || !event.isPrimary || event.button!==0) return;
     const rect=book.getBoundingClientRect();
-    const turn={direction,original:new Date(shown),pointerId:event.pointerId,width:rect.width,height:rect.height,x:event.clientX-rect.left,y:event.clientY-rect.top,active:false};
+    const dimensions = paperDimensions(rect);
+    const turn={direction,original:new Date(shown),pointerId:event.pointerId,...dimensions,
+      x:(event.clientX-rect.left)/dimensions.scale,y:(event.clientY-rect.top)/dimensions.scale,active:false};
     pageTurn=turn;
     corner.setPointerCapture(event.pointerId);
     book.classList.add('turn-held');
@@ -468,7 +504,7 @@ for (const [id,direction] of [['turnPrevious',-1],['turnNext',1]]) {
     const turn=pageTurn;
     if (!turn || turn.pointerId!==event.pointerId || turn.settling) return;
     const rect=book.getBoundingClientRect();
-    turn.x=event.clientX-rect.left; turn.y=event.clientY-rect.top;
+    turn.x=(event.clientX-rect.left)/turn.scale; turn.y=(event.clientY-rect.top)/turn.scale;
     const inward=direction===1?turn.width-turn.x:turn.x;
     if (!turn.active && inward>48) liftPaper(turn);
     if (turn.active) drawPaper(turn,turn.x,turn.y);
@@ -485,17 +521,21 @@ for (const [id,direction] of [['turnPrevious',-1],['turnNext',1]]) {
   // Enter / Space provides the same interaction without dragging.
   corner.addEventListener('click',event=>{
     if (event.detail!==0 || pageTurn) return;
-    const rect=book.getBoundingClientRect();
-    pageTurn={direction,original:new Date(shown),width:rect.width,height:rect.height,x:direction===1?rect.width-20:20,y:rect.height-20};
+    const dimensions = paperDimensions(book.getBoundingClientRect());
+    pageTurn={direction,original:new Date(shown),...dimensions,x:direction===1?dimensions.width-20:20,y:dimensions.height-20};
     liftPaper(pageTurn); finishPaper(true);
   });
 }
 document.addEventListener('keydown',event=>{if(event.key==='Escape' && pageTurn && !pageTurn.settling) finishPaper(false);});
 window.addEventListener('blur',()=>{if(pageTurn && !pageTurn.settling) finishPaper(false);});
-window.addEventListener('resize',()=>{if(pageTurn) cleanupPaper(pageTurn,false);});
+window.addEventListener('resize',()=>{
+  if(pageTurn) cleanupPaper(pageTurn,Boolean(pageTurn.commit));
+  fitPaper();
+});
 window.addEventListener('scroll',()=>{if(pageTurn?.active) positionFloating(pageTurn);},{capture:true,passive:true});
 render();
 if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(fitPaper).observe(bookViewport);
   new ResizeObserver(() => {
     if (!pageTurn) renderEntryPreviews();
   }).observe($('days'));

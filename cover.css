@@ -50,15 +50,17 @@ body.diary-closed,body.diary-opening{overflow:hidden}
 .diary-open>main{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
 .diary-open .above-book{margin:12px 7px 10px}
 .diary-open .book-viewport{flex-shrink:0;padding-bottom:16px}
-.diary-open .book{padding-top:clamp(20px,2.8svh,30px);padding-bottom:16px}
-.diary-open .book-heading{height:clamp(94px,14svh,140px)}
-.diary-open .month-line h1{font-size:clamp(38px,6svh,57px)}
+.diary-open .book-viewport>.book{width:1144px;min-width:0;zoom:var(--paper-scale,1);margin-inline:auto}
+.diary-open .book{padding:28px 36px 16px}
+.diary-open .book-heading{height:136px}
+.diary-open .month-line h1{font-size:57px}
 .diary-open .month-heading p{margin-top:8px}
 .diary-open .heading-right{padding-top:4px}
-.diary-open .month-nav{padding-top:clamp(30px,6svh,63px)}
+.diary-open .month-nav{gap:15px}
 .diary-open .weekdays{height:36px}
-.diary-open .days{grid-template-rows:repeat(6,max(var(--plan-min-height,0px),clamp(44px,calc((100svh - 460px)/6),108px)))}
-.diary-open .notes h2{margin-bottom:18px}
+.diary-open .days{grid-template-rows:repeat(6,max(var(--plan-min-height,0px),81px))}
+.diary-open .notes{padding-right:15px}
+.diary-open .notes h2{margin-bottom:18px;font-size:9px;letter-spacing:1.6px}
 .diary-open .notes textarea{min-height:70px}
 .diary-open .notes-bottom{padding:12px 0}
 .diary-open .notes-bottom>span:last-child{margin-top:10px}
@@ -73,9 +75,8 @@ body.diary-closed,body.diary-opening{overflow:hidden}
 .diary-open .month-nav{padding-top:0}
 .rabbit-emblem{display:block;width:88px;max-width:100%;height:auto;margin:5px 0 10px;image-rendering:auto}
 /* The lifted sheet lives outside the scrolling book viewport so its tip is visible. */
-.turn-floating.diary-open{position:fixed;z-index:10;display:block;min-height:0;max-width:none;margin:0;padding:0;overflow:visible;pointer-events:none;transition:none;filter:none;isolation:isolate}
-@media(max-width:800px){:root{--cover-width:clamp(230px,63vw,310px)}.cover-scene{gap:22px}.cover-scene-brand{font-size:20px}.cover-scene-brand span{font-size:7px;letter-spacing:1.4px}.cover-invitation{font-size:12px;letter-spacing:.3px}.cover-front{padding-left:27px;padding-right:25px}.cover-title{font-size:11px;letter-spacing:1.5px}.cover-bottom,.cover-colophon{left:27px;right:25px}.cover-year{font-size:11px}.diary-open .mobile-hint{margin:0 0 8px;font-size:10px}.diary-open .book-heading{height:108px}.diary-open .days{grid-template-rows:repeat(6,max(var(--plan-min-height,0px),80px))}.diary-open .book-viewport{max-height:none}.diary-open .tools{max-width:240px;gap:7px 10px}.diary-open .tools button{padding:7px 10px}.diary-open .brand-caption{display:none}.diary-open>main{padding-top:12px}.diary-open .desk-footer{line-height:1.8}}
+.turn-floating.diary-open{position:fixed;z-index:10;display:block;min-height:0;max-width:none;margin:0;padding:0;overflow:visible;pointer-events:none;transition:none;filter:none;isolation:isolate;transform-origin:top left}
+@media(max-width:800px){:root{--cover-width:clamp(230px,63vw,310px)}.cover-scene{gap:22px}.cover-scene-brand{font-size:20px}.cover-scene-brand span{font-size:7px;letter-spacing:1.4px}.cover-invitation{font-size:12px;letter-spacing:.3px}.cover-front{padding-left:27px;padding-right:25px}.cover-title{font-size:11px;letter-spacing:1.5px}.cover-bottom,.cover-colophon{left:27px;right:25px}.cover-year{font-size:11px}.diary-open .mobile-hint{margin:0 0 8px;font-size:10px}.diary-open .book-viewport{max-height:none}.diary-open .tools{max-width:240px;gap:7px 10px}.diary-open .tools button{padding:7px 10px}.diary-open .brand-caption{display:none}.diary-open>main{padding-top:12px}.diary-open .desk-footer{line-height:1.8}}
 @media(max-height:650px) and (min-width:801px){:root{--cover-width:230px}.cover-scene{gap:12px}.cover-invitation{margin-top:10px}.diary-open .notes-bottom .sprout{font-size:25px}.diary-open .notes-bottom p{margin:4px 0}.diary-open .handwriting{font-size:17px}}
-@media(max-width:800px){.diary-open .book:not(.turn-copy){min-width:860px}}
 @media(max-width:800px){.diary-open .brand-caption{display:block;font-size:10px;margin-left:0}.diary-open .brand-lockup{gap:8px}.diary-open .tools{max-width:160px}.diary-open .heading-right{padding:0}.diary-open .month-nav{padding-top:0}}
 @media(prefers-reduced-motion:reduce){.cover-scene,.cover-object,.diary-open{transition:none}.is-opening .cover-front,.is-opening .cover-back,.is-opening .cover-opening-leaf,.is-opening::before,.is-opening .cover-opening-leaf::after{animation:none}}
