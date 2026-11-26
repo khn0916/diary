@@ -48,6 +48,7 @@
   const study = panel.querySelector('#diaryStudy');
   const view = panel.querySelector('[data-study-view]');
   const status = panel.querySelector('#accountStatus');
+  let recordsRequest = 0;
 
   function totals(days, unit) {
     const values = days.map(day => day.value).filter(value => value !== null);
@@ -56,6 +57,53 @@
     const ticks = values.reduce((sum, value) => sum + Math.round(Number(value) * 10000), 0);
     const rounded = n => (Math.floor((n + 50) / 100) / 100).toFixed(2);
     return `합계 ${rounded(ticks)} ${unit} · 평균 ${rounded(ticks / values.length)} ${unit} (${values.length}일)`;
+  }
+
+  function studyChange(change) {
+    return change ? `<p class="improvement">변경한 규칙 · ${escape(change.rule)}<br>
+      이유 · ${escape(change.reason)}<br>${escape(seoulTime.format(new Date(change.changed_at)))} · 근거 날짜 ${escape(change.based_on.join(', '))}</p>` : '';
+  }
+
+  function studyEntries(record) {
+    if (!record.days.length) return '<p class="subtle">아직 저장한 일별 기록이 없어요.</p>';
+    const unit = escape(record.unit);
+    return `<ol>${record.days.map(day => {
+      const sources = day.sources?.map(source => `<li><a href="#plan=${encodeURIComponent(record.plan_id)}&amp;task=${encodeURIComponent(source.task_id)}&amp;execution=${encodeURIComponent(source.id)}">${escape(source.title)}</a> · 실행 #${escape(source.id)} · ${escape(source.minutes)}분</li>`).join('');
+      return `<li><time datetime="${escape(day.date)}">${escape(day.date)}</time> · ${day.value === null ? '결측' : escape(day.value) + ' ' + unit}${day.evidence ? ' · ' + escape(day.evidence) : ''}
+        ${sources ? `<ul>${sources}</ul>` : day.sources ? '<p class="subtle">해당 날짜의 실행 기록이 없어요.</p>' : ''}</li>`;
+    }).join('')}</ol>`;
+  }
+
+  function studyComparison(record) {
+    const unit = escape(record.unit), days = record.days;
+    return `<p><strong>전체</strong> · ${totals(days, unit)}</p>
+      <p>변경 전 1~2일차 · ${totals(days.slice(0, 2), unit)}<br>변경 후 3~5일차 · ${totals(days.slice(2), unit)}</p>`;
+  }
+
+  async function updatePlanStudy(record) {
+    const summary = document.querySelector('[data-plan-study-summary]');
+    const evidence = document.querySelector('[data-plan-study-evidence]');
+    if (!summary || !evidence) return;
+    const request = ++recordsRequest;
+    try {
+      const current = record === undefined ? (await cloud.read('study')).content : record;
+      if (request !== recordsRequest || !summary.isConnected) return;
+      if (!current || (current.plan_id != null && String(current.plan_id) !== summary.dataset.planStudySummary)) return;
+      const scope = current.plan_id == null ? '직접 입력한 계정의 관찰 기록' : '선택한 계획의 관찰 기록';
+      summary.innerHTML = `<h2>5일 실사용 집계</h2>
+        <p>${escape(current.question)}</p>
+        <p class="subtle">${scope} · ${escape(current.metric)} (${escape(current.unit)}) · ${current.days.length}/5일 저장</p>
+        ${studyComparison(current)}`;
+      evidence.innerHTML = `<h3>5일 실사용 근거</h3>
+        <p class="subtle">서울 기준 저장한 관찰 날짜 전체를 보여줘요.</p>
+        ${studyEntries(current)}${studyChange(current.change)}`;
+      summary.hidden = false;
+      evidence.hidden = false;
+    } catch (error) {
+      if (request !== recordsRequest || !summary.isConnected) return;
+      summary.textContent = '5일 실사용 기록을 불러오지 못했어요. 페이지를 새로고침해 주세요.';
+      summary.hidden = false;
+    }
   }
 
   function renderStudy(record, plans = []) {
@@ -83,21 +131,12 @@
     const unit = escape(record.unit), days = record.days;
     const changed = record.change;
     const linked = record.plan_id != null;
-    const planUrl = `#view=records&plan=${encodeURIComponent(record.plan_id)}`;
+    const recordsUrl = linked ? `#view=records&amp;plan=${encodeURIComponent(record.plan_id)}` : '#view=records';
     const intro = `<h3>${escape(record.question)}</h3>
       <p>${escape(record.metric)} (${unit}) · ${escape(record.calculation)}</p>
-      ${linked ? `<p><a href="${planUrl}">${escape(record.plan_title)}의 실행 기록 열기 ↗</a></p>` : ''}
+      <p><a href="${recordsUrl}" data-open-study-records>${linked ? escape(record.plan_title) + '의 ' : ''}집계와 근거 기록 보기 ↗</a></p>
       <p>처음 계획 규칙 · ${escape(record.rule)}</p>
       <p class="subtle">서울 시간 기준 · 주 시작 월요일 · 하루에 한 번 기록 · 결측은 합계와 평균에서 제외 · 음수 및 입력 범위 밖 값은 거절하고 범위 안 값은 근거와 함께 보존 · 소수점 둘째 자리 반올림</p>`;
-    const changeDetails = changed ? `<p class="improvement">변경한 규칙 · ${escape(changed.rule)}<br>
-      이유 · ${escape(changed.reason)}<br>${escape(seoulTime.format(new Date(changed.changed_at)))} · 근거 날짜 ${escape(changed.based_on.join(', '))}</p>` : '';
-    const entries = days.length ? `<h3>일별 근거 기록</h3><ol>${days.map(day => {
-      const sources = day.sources?.map(source => `<li><a href="#plan=${encodeURIComponent(record.plan_id)}&amp;task=${encodeURIComponent(source.task_id)}">${escape(source.title)}</a> · 실행 #${escape(source.id)} · ${escape(source.minutes)}분</li>`).join('');
-      return `<li><time>${escape(day.date)}</time> · ${day.value === null ? '결측' : escape(day.value) + ' ' + unit}${day.evidence ? ' · ' + escape(day.evidence) : ''}
-        ${sources ? `<ul>${sources}</ul>` : day.sources ? '<p class="subtle">해당 날짜의 실행 기록이 없어요.</p>' : ''}</li>`;
-    }).join('')}</ol>` : '';
-    const comparison = `<h3>실사용 집계</h3><p><strong>전체</strong> · ${totals(days, unit)}</p>
-      <p>변경 전 1~2일차 · ${totals(days.slice(0, 2), unit)}<br>변경 후 3~5일차 · ${totals(days.slice(2), unit)}</p>`;
     const action = days.length === 2 && !changed
       ? studyForm('change', textField('새 계획 규칙 한 가지', 'rule', 500) + textField('바꾸는 이유', 'reason', 500), '규칙 변경 기록')
       : days.length < 5 ? studyForm('record', linked ?
@@ -105,7 +144,8 @@
           <label class="delete-confirm"><input type="checkbox" name="zero"> 실행 기록이 없고 실제 작업 시간이 0분이에요</label>` :
         `<label class="pds-field"><span>오늘 관찰한 값 (${unit})</span><input name="value" type="number" min="0" max="999999999.9999" step="0.0001" required></label>
           <label class="delete-confirm"><input type="checkbox" name="missing"> 오늘 값이 없어 결측으로 남기기</label>`, `${days.length + 1}일차 기록`) : '<p>5일 사용 기록이 완료되었어요.</p>';
-    view.innerHTML = intro + changeDetails + entries + comparison + action;
+    view.innerHTML = `${intro}${studyChange(changed)}<h3>일별 근거 기록</h3>${studyEntries(record)}
+      <h3>실사용 집계</h3>${studyComparison(record)}${action}`;
   }
 
   async function refreshStudy() {
@@ -121,6 +161,7 @@
 
   study.addEventListener('toggle', () => { if (study.open) refreshStudy(); });
   document.addEventListener('click', event => {
+    if (event.target.closest('[data-open-study-records]')) document.getElementById('pdsApp').scrollIntoView({ block: 'start' });
     if (!event.target.closest('#openDiaryStudy, [data-open-diary-study]')) return;
     study.open = true;
     study.scrollIntoView({ block: 'start' });
@@ -168,7 +209,9 @@
     try {
       if (form.dataset.study) {
         if (form.dataset.study === 'record' && values.missing) values.value = null;
-        renderStudy(await cloud.study(form.dataset.study, values));
+        const record = await cloud.study(form.dataset.study, values);
+        renderStudy(record);
+        updatePlanStudy(record);
         status.textContent = '사용 기록을 저장했어요.';
       } else if (action === 'import') {
         const count = await cloud.importFromBrowser(values.kind, values.source === 'legacy');
@@ -195,4 +238,5 @@
       button.disabled = false;
     }
   });
+  window.DiaryStudy = { updatePlanStudy };
 })();

@@ -163,15 +163,18 @@
   function activePlans() {
     return state.plans.filter(p => !p.deleted_at).sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
   }
-  // The records view remains available for the future execution and review pages.
   function recordsPage(q) {
     const plans = activePlans();
-    if (!plans.length) return heading('실행 · 회고');
+    const title = heading('실행 · 회고', '<button type="button" class="pds-button" data-open-diary-study>5일 사용 기록</button>');
+    const studyEvidence = '<div class="history-item" data-plan-study-evidence aria-live="polite" hidden></div>';
+    if (!plans.length) return title + '<section class="pds-card" data-plan-study-summary="" aria-live="polite" hidden></section>' +
+      `<section id="evidence" class="pds-card"><h2>근거 기록</h2><p class="subtle">등록된 계획이 없어요.</p>${studyEvidence}</section>`;
     const plan = plans.find(p => p.id === Number(q.plan)) || plans[0], from = q.from || '', to = q.to || '';
     const { values, groups } = M.summary(state, plan.id, from, to);
     const filters = `<form data-action="filter" class="pds-filters">${options('plan', Object.fromEntries(plans.map(p => [p.id, p.title])), plan.id, '계획 선택')}${field('집계 시작 (마감일 기준)', 'from', from, 'date', false)}${field('집계 종료', 'to', to, 'date', false)}<button class="pds-button">기간 적용</button></form>`;
     const overview = `<section class="pds-card"><span class="eyebrow">PLAN #${plan.id}</span><h2>${e(plan.title)}</h2><p>${e(plan.start_date)} ~ ${e(plan.end_date)} · 우선순위 ${priorities[plan.priority]} · 계획 예상 ${plan.estimated_minutes}분</p><p class="preserve-lines">성공 기준: ${e(plan.success_criteria)}</p>${plan.source_review_id ? `<p class="improvement">회고 #${plan.source_review_id}에서 가져온 개선점: ${e(plan.improvement)}</p>` : ''}<p class="subtle">아래 예상 시간 집계는 개별 할 일의 예상 시간 합계입니다.</p></section>`;
     const cards = `<section class="metric-grid" aria-label="회고 집계">${Object.entries(metrics).map(([key, label]) => `<a class="metric" href="${e(url({ plan: plan.id, from, to, metric: key }))}" data-scroll-evidence><span>${label}</span><strong>${values[key]}<small>${['estimated', 'actual', 'difference'].includes(key) ? '분' : '건'}</small></strong><span>근거 기록 보기 ↗</span></a>`).join('')}</section>`;
+    const studySummary = `<section class="pds-card" data-plan-study-summary="${plan.id}" aria-live="polite" hidden></section>`;
     const history = state.versions.filter(v => v.plan_id === plan.id).sort((a, b) => a.version - b.version).map(v => `<article class="history-item"><h3>버전 ${v.version}${v.version === 1 ? ' · 최초 계획' : ''}</h3><p>${e(v.snapshot.title)}</p><p>${e(v.snapshot.start_date)} ~ ${e(v.snapshot.end_date)} · ${priorities[v.snapshot.priority]} · ${v.snapshot.estimated_minutes}분</p><p class="preserve-lines">${e(v.snapshot.success_criteria)}</p><small>${e(localDate(v.created_at))} (서울)</small></article>`).join('');
     const edits = `<div class="pds-two"><details class="pds-card"><summary>계획 수정 · 최초 계획과 이력 보존</summary>${form('plan.save', planFields(plan), '계획 수정 및 이력 저장')}<h3>수정 이력</h3>${history}${deletion('plan', plan.id, plan.id)}</details><details class="pds-card"><summary>이 계획에 할 일 추가</summary>${form('task.save', taskFields(plan.id), '할 일 추가')}</details></div>`;
     const metric = Object.hasOwn(metrics, q.metric || '') ? q.metric : '', sort = Object.hasOwn(sorts, q.sort || '') ? q.sort : 'due';
@@ -183,9 +186,8 @@
     tasks.sort(compare[sort]);
     const controls = `<form data-action="filter" class="pds-filters">${hidden('plan', plan.id) + hidden('from', from) + hidden('to', to) + hidden('metric', metric)}${field('제목·태그 검색', 'q', q.q, 'text', false)}${options('state', { '': '전체 상태', open: '미완료', done: '완료' }, q.state, '상태')}${field('태그 일치', 'tag', q.tag, 'text', false)}${options('sort', sorts, sort, '정렬 기준')}<button class="pds-button">조회</button></form>`;
     const rows = tasks.map(t => `<tr><td><a href="${e(url({ plan: plan.id, task: t.id }))}"><b>#${t.id} ${e(t.title)}</b></a><span class="table-note">${e(t.tags)}</span></td><td>${e(t.due_date)}</td><td>${priorities[t.priority]}</td><td>${t.completed ? '완료' : t.due_date < M.today() ? '지연' : '진행 중'}${t.blocked ? ' · 막힘' : ''}</td><td>${t.estimated_minutes} / ${t.actual_minutes}분</td><td>${form('task.complete', hidden('task_id', t.id) + hidden('plan_id', plan.id) + hidden('completed', t.completed ? '0' : '1'), t.completed ? '완료 취소' : '완료 처리')}</td></tr>`).join('');
-    const table = `<section id="evidence" class="pds-card"><h2>${e(metrics[metric] || '할 일')} · 근거 기록</h2><p class="subtle">집계는 선택 계획의 삭제되지 않은 할 일과 마감일 기준입니다. 실제 시간은 해당 할 일의 유효 실행 기록 합계입니다. 할 일 제목을 누르면 실행 기록이 보입니다.</p>${controls}<p class="sort-label">정렬: ${sorts[sort]} · 검색 결과 ${tasks.length}건</p><div class="table-scroll"><table><thead><tr><th>할 일 / 태그</th><th>마감일</th><th>우선순위</th><th>상태</th><th>예상 / 실제</th><th>처리</th></tr></thead><tbody>${rows || '<tr><td colspan="6">해당하는 기록이 없습니다.</td></tr>'}</tbody></table></div></section>`;
-    return heading('실행 · 회고', '<button type="button" class="pds-button" data-open-diary-study>5일 사용 기록</button>') +
-      filters + overview + cards + edits + table + reviewSection(plan, { from, to });
+    const table = `<section id="evidence" class="pds-card"><h2>${e(metrics[metric] || '할 일')} · 근거 기록</h2><p class="subtle">집계는 선택 계획의 삭제되지 않은 할 일과 마감일 기준입니다. 실제 시간은 해당 할 일의 유효 실행 기록 합계입니다. 할 일 제목을 누르면 실행 기록이 보입니다.</p>${studyEvidence}${controls}<p class="sort-label">정렬: ${sorts[sort]} · 검색 결과 ${tasks.length}건</p><div class="table-scroll"><table><thead><tr><th>할 일 / 태그</th><th>마감일</th><th>우선순위</th><th>상태</th><th>예상 / 실제</th><th>처리</th></tr></thead><tbody>${rows || '<tr><td colspan="6">해당하는 기록이 없습니다.</td></tr>'}</tbody></table></div></section>`;
+    return title + filters + overview + cards + studySummary + edits + table + reviewSection(plan, { from, to });
   }
   function reviewSection(plan, { from = '', to = '', startDraft = false } = {}) {
     const reviews = state.reviews.filter(r => r.plan_id === plan.id && !r.deleted_at).sort((a, b) => b.id - a.id).map(r => {
@@ -206,7 +208,7 @@
   }
   function taskPage(id) {
     const task = M.find(state, 'tasks', id), records = state.executions.filter(r => r.task_id === task.id && !r.deleted_at).sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id);
-    const logs = records.map(r => `<article class="history-item"><h3>실행 #${r.id} · ${r.actual_minutes}분</h3><p>${e(localDate(r.started_at))} → ${e(localDate(r.ended_at))} (서울)</p><p class="preserve-lines">막힘 사유: ${e(r.blocked_reason || '없음')}</p><details><summary>실행 기록 수정</summary>${form('execution.save', executionFields(task.id, r), '실행 수정')}</details>${deletion('execution', r.id, task.plan_id, task.id)}</article>`).join('');
+    const logs = records.map(r => `<article class="history-item" id="execution-${r.id}" tabindex="-1"><h3>실행 #${r.id} · ${r.actual_minutes}분</h3><p>${e(localDate(r.started_at))} → ${e(localDate(r.ended_at))} (서울)</p><p class="preserve-lines">막힘 사유: ${e(r.blocked_reason || '없음')}</p><details><summary>실행 기록 수정</summary>${form('execution.save', executionFields(task.id, r), '실행 수정')}</details>${deletion('execution', r.id, task.plan_id, task.id)}</article>`).join('');
     return heading('실행 노트') + `<a href="${e(url({ plan: task.plan_id, metric: 'planned' }))}" data-scroll-evidence>← 계획 #${task.plan_id}의 근거 기록으로</a><section class="pds-card"><h2>할 일 #${task.id} · ${e(task.title)}</h2><p>예상 ${task.estimated_minutes}분 · 실제 합계 ${records.reduce((n, r) => n + r.actual_minutes, 0)}분 · 연결 계획 #${task.plan_id}</p>${form('task.save', taskFields(task.plan_id, task), '할 일 수정')}${deletion('task', task.id, task.plan_id)}</section><div class="pds-two"><section class="pds-card"><h2>실제 실행 기록하기</h2>${form('execution.save', executionFields(task.id), '실행 기록 저장')}</section><section class="pds-card"><h2>연결된 실행 기록</h2>${logs || '<p class="subtle">아직 실행 기록이 없습니다.</p>'}</section></div>`;
   }
   function message(text, error = false) { status.textContent = text; status.classList.toggle('is-error', error); if (error) status.scrollIntoView({ block: 'nearest' }); }
@@ -221,6 +223,10 @@
     }
     catch (error) { app.innerHTML = heading('기록을 확인해주세요') + `<section class="pds-card"><p>${e(error.message)}</p><a class="pds-button" href="#">전체 계획으로 돌아가기</a></section>`; }
     app.setAttribute('aria-busy', 'false');
+    window.DiaryStudy?.updatePlanStudy();
+    if (q.task && q.execution) requestAnimationFrame(() => {
+      if (query().execution === q.execution) document.getElementById(`execution-${q.execution}`)?.focus();
+    });
     if (q.metric) requestAnimationFrame(() => document.getElementById('evidence')?.scrollIntoView({ block: 'start' }));
   }
   function navigate(values) {
