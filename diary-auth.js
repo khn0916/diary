@@ -50,8 +50,10 @@
       if (journal) window.DiaryCloud.initialJournal = saved.content;
     } catch (error) {
       if (error.status === 401) {
-        await auth.signOut({ scope: 'global' });
-        lock();
+        userId = null;
+        const { error: signOutError } = await auth.signOut({ scope: 'local' });
+        if (signOutError) throw signOutError;
+        lock(true);
       }
       throw error;
     }
@@ -64,10 +66,15 @@
     }
   }
 
-  function lock() {
+  function lock(reauthenticate = false) {
     (journal || plans).hidden = true;
     document.getElementById('entryDialog')?.close();
-    location.replace(landing);
+    const destination = new URL(landing);
+    if (reauthenticate) {
+      destination.searchParams.set('login', plans ? 'pds' : '1');
+      if (plans) destination.hash = location.hash;
+    }
+    location.replace(destination);
   }
 
   function editForm(disabled) {
