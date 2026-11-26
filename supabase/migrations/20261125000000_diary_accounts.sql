@@ -142,7 +142,6 @@ declare
   plans_state jsonb;
   study_plan jsonb;
   sources jsonb;
-  evidence text;
 begin
   if jsonb_typeof(details) is distinct from 'object' or octet_length(details::text) > 16384 then
     raise sqlstate 'PT400' using message = 'Invalid study input';
@@ -209,7 +208,6 @@ begin
     if count_days > 0 and today <= (days->(count_days-1)->>'date')::date then
       raise sqlstate 'PT409' using message = 'Use a different Seoul date for each entry';
     end if;
-    evidence := nullif(btrim(details->>'evidence'), '');
     if current_state ? 'plan_id' then
       select content into plans_state from yeobaek_private.documents where owner_id = actor and kind = 'plans';
       select coalesce(jsonb_agg(jsonb_build_object(
@@ -224,20 +222,16 @@ begin
         and task->'plan_id' = plan->'id' and task->>'deleted_at' is null and run->>'deleted_at' is null
         and ((run->>'started_at')::timestamptz at time zone 'Asia/Seoul')::date = today;
       if metric_value is null and details->>'zero' = 'on' then
-        if evidence is null then
-          raise sqlstate 'PT400' using message = 'Explain why there was no activity';
-        end if;
         metric_value := 0;
       end if;
     else
-      if evidence is null or
+      if not details ? 'value' or
          (details->>'value' is not null and (details->>'value') !~ '^[0-9]{1,9}(\.[0-9]{1,4})?$') then
-        raise sqlstate 'PT400' using message = 'Enter evidence and a nonnegative value or mark it missing';
+        raise sqlstate 'PT400' using message = 'Enter a nonnegative value or explicitly mark it missing';
       end if;
       metric_value := (details->>'value')::numeric;
     end if;
-    entry := jsonb_build_object('date', today, 'recorded_at', moment,
-      'value', metric_value, 'evidence', coalesce(evidence, ''));
+    entry := jsonb_build_object('date', today, 'recorded_at', moment, 'value', metric_value);
     if sources is not null then
       entry := entry || jsonb_build_object('sources', sources);
     end if;

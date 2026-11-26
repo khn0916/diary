@@ -54,8 +54,11 @@ async function main() {
   await asUser(0);
   const study = (op, input) => db.query('select public.diary_study($1,$2) as result',[op,input]).then(r=>r.rows[0].result);
   await study('start',{question:'compare?',metric:'time',unit:'min',calculation:'sum',rule:'before'});
-  await study('record',{value:5,evidence:'test fixture only'});
-  await rejects(study('record',{value:8,evidence:'duplicate test'}),'PT409');
+  await rejects(study('record', {}), 'PT400');
+  const manual = (await study('record', { value: 5 })).days[0];
+  assert.equal(manual.value, 5);
+  assert.equal(Object.hasOwn(manual, 'evidence'), false);
+  await rejects(study('record',{value:8}),'PT409');
   await rejects(study('change',{rule:'after',reason:'too soon'}),'PT409');
   await rejects(rpc('put','study',owners[0],2,{days:[]}), 'PT403');
 
@@ -85,9 +88,10 @@ async function main() {
   const linked = await study('start', { ...setup, plan_id: 1, metric: 'ignored' });
   assert.equal(linked.metric, '실제 실행 시간');
   assert.equal(linked.unit, '분');
-  const first = (await study('record', { value: 999 })).days[0];
+  const first = (await study('record', { value: 999, evidence: 'Ignore text from an older client' })).days[0];
   assert.equal(first.date, dates.today);
   assert.equal(first.value, 40);
+  assert.equal(Object.hasOwn(first, 'evidence'), false);
   assert.deepEqual(first.sources.map(source => [source.id, source.title, source.minutes]),
     [[10, 'Read', 15], [11, 'Read', 25]]);
   await rpc('put', 'plans', owners[1], 1, { ...ownPlans, executions: [] });
@@ -102,10 +106,10 @@ async function main() {
   await db.query("update yeobaek_private.documents set content = jsonb_set(content, '{days,1,date}', to_jsonb($2::text)) where owner_id = $1 and kind = 'study'", [owners[1], dates.yesterday]);
   await asUser(1);
   await rejects(study('record', {}), 'PT409');
+  await rejects(study('change', { rule: 'after' }), 'PT400');
   const changed = await study('change', { rule: 'after', reason: 'fixture comparison' });
   assert.deepEqual(changed.change.based_on, [dates.earlier, dates.yesterday]);
-  await rejects(study('record', { zero: 'on' }), 'PT400');
-  assert.equal((await study('record', { zero: 'on', evidence: 'No activity' })).days[2].value, 0);
+  assert.equal((await study('record', { zero: 'on' })).days[2].value, 0);
 
   await db.exec('reset role');
   await db.query('delete from auth.sessions where id=$1',[sessions[0]]);

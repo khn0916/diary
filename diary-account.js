@@ -6,8 +6,8 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const seoulTime = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Seoul' });
-  const textField = (label, name, max = 200, required = true) =>
-    `<label class="pds-field"><span>${label}</span><input name="${name}" maxlength="${max}"${required ? ' required' : ''}></label>`;
+  const textField = (label, name, max = 200) =>
+    `<label class="pds-field"><span>${label}</span><input name="${name}" maxlength="${max}" required></label>`;
   const studyForm = (action, input, label) =>
     `<form class="pds-form" data-study="${action}">${input}<button class="pds-button">${label}</button></form>`;
 
@@ -102,11 +102,9 @@
       ? studyForm('change', textField('새 계획 규칙 한 가지', 'rule', 500) + textField('바꾸는 이유', 'reason', 500), '규칙 변경 기록')
       : days.length < 5 ? studyForm('record', linked ?
         `<p class="subtle">저장할 때 선택한 계획의 오늘 실행 기록과 합계를 가져와 근거로 남겨요. 실행 기록이 없으면 결측으로 남겨요.</p>
-          <label class="delete-confirm"><input type="checkbox" name="zero"> 실행 시간이 0분임을 확인했어요</label>` +
-          textField('오늘 기록 메모 (0분을 선택하면 이유 입력)', 'evidence', 1200, false) :
+          <label class="delete-confirm"><input type="checkbox" name="zero"> 실행 기록이 없고 실제 작업 시간이 0분이에요</label>` :
         `<label class="pds-field"><span>오늘 관찰한 값 (${unit})</span><input name="value" type="number" min="0" max="999999999.9999" step="0.0001" required></label>
-          <label class="delete-confirm"><input type="checkbox" name="missing"> 오늘 값이 없어 결측으로 남기기</label>` +
-          textField('오늘 기록의 근거', 'evidence', 1200), `${days.length + 1}일차 기록`) : '<p>5일 사용 기록이 완료되었어요.</p>';
+          <label class="delete-confirm"><input type="checkbox" name="missing"> 오늘 값이 없어 결측으로 남기기</label>`, `${days.length + 1}일차 기록`) : '<p>5일 사용 기록이 완료되었어요.</p>';
     view.innerHTML = intro + changeDetails + entries + comparison + action;
   }
 
@@ -137,7 +135,6 @@
       manual.hidden = linked;
       manual.querySelectorAll('input').forEach(input => { input.disabled = linked; });
     }
-    if (event.target.name === 'zero') event.target.form.elements.evidence.required = event.target.checked;
     if (event.target.name !== 'missing') return;
     const field = event.target.form.elements.value;
     field.disabled = event.target.checked;
