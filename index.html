@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="style.css?v=11">
   <link rel="stylesheet" href="diary-navigation.css">
   <link rel="stylesheet" href="cover.css?v=5">
-  <link rel="stylesheet" href="diary-auth.css?v=3">
+  <link rel="stylesheet" href="diary-auth.css?v=4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ" crossorigin="anonymous" defer></script>
-  <script src="diary-auth.js?v=9" defer></script>
+  <script src="diary-auth.js?v=10" defer></script>
   <script src="cover.js?v=2" defer></script>
 </head>
 <body class="diary-closed">
@@ -41,7 +41,7 @@
   <div class="workspace diary-open" id="diaryWorkspace" hidden>
     <header class="toolbar">
       <a class="brand" href="./"><span class="brand-mark">▤</span><span class="brand-lockup"><span class="brand-name">여백</span><span class="brand-caption">나의 작은 다이어리</span></span></a>
-      <div class="tools"><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">계정에 기록됩니다</span><button type="button" id="logoutDiary">로그아웃</button></div>
+      <div class="tools"><a class="pds-entry" href="pds/index.html">계획 · 실행 · 회고 ↗</a><span id="saveStatus" role="status">계정에 기록됩니다</span><button type="button" id="logoutDiary" class="diary-logout">로그아웃</button></div>
     </header>
     <main>
       <div class="above-book"><span>조금 느리게, 나의 속도로.</span><span>MONTHLY JOURNAL <i></i> <span id="yearLabel"></span></span></div>

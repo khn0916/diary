@@ -20,7 +20,7 @@
   const auth = client?.auth;
 
   const scripts = new Map();
-  let afterLogin, userId, busy = false, signingUp = false;
+  let afterLogin, userId, busy = false, signingUp = false, leaving = false;
 
   function load(path) {
     if (!scripts.has(path)) {
@@ -67,6 +67,8 @@
   }
 
   function lock(reauthenticate = false) {
+    if (leaving) return;
+    leaving = true;
     (journal || plans).hidden = true;
     document.getElementById('entryDialog')?.close();
     const destination = new URL(landing);
@@ -270,14 +272,16 @@
 
   logout?.addEventListener('click', async () => {
     logout.disabled = true;
+    logout.textContent = '로그아웃 중…';
     try {
       await window.savePendingDiaryNotes?.();
       const { error } = await auth.signOut({ scope: 'global' });
       if (error) throw error;
-      if (!userId) lock();
+      lock();
     } catch {
       const status = document.getElementById('saveStatus') || document.getElementById('appStatus');
       status.textContent = '저장이나 로그아웃을 마치지 못했어요. 연결을 확인하고 다시 시도해주세요.';
+      logout.textContent = '로그아웃';
       logout.disabled = false;
     }
   });

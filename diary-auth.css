@@ -87,3 +87,28 @@
 .login-status:empty { display: none; }
 .login-fallback { margin: 36px auto; width: min(440px, calc(100% - 32px)); line-height: 1.7; }
 .login-fallback a { text-decoration: underline; }
+
+.tools .diary-logout,
+.pds-nav .diary-logout {
+  flex: 0 0 auto;
+  min-inline-size: 82px;
+  padding: 8px 12px;
+  border: 1px solid #9f8b72;
+  border-radius: 5px;
+  background: #f5efe2;
+  color: #584738;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tools .diary-logout:hover,
+.pds-nav .diary-logout:hover { background: #ede2d0; }
+.diary-logout:disabled { cursor: wait; }
+
+@media (max-width: 800px) {
+  .diary-open .tools #saveStatus {
+    order: 1;
+    flex-basis: 100%;
+    max-width: none;
+    text-align: right;
+  }
+}
