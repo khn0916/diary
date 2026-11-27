@@ -40,6 +40,8 @@
 .memo-title{display:grid;grid-template-columns:minmax(0,1fr) 56px;align-items:center;gap:14px;min-height:53px;border-bottom:1px solid #6c594a42;padding-bottom:12px}
 .plan-memo h2{margin:0;overflow-wrap:anywhere}
 .memo-title form{justify-self:end}
+.memo-execution{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin-block:8px}
+.memo-execution button{min-height:32px;padding-block:4px}
 .memo-dates,.memo-priority{margin:13px 0 0;font-size:14px}
 .memo-priority{margin-top:9px}
 .memo-reveal{animation:memo-reveal .28s .08s ease-out both}

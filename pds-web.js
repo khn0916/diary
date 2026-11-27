@@ -144,7 +144,12 @@
           </header>
           <p class="memo-dates memo-reveal"><time>${e(plan.start_date)}</time> – <time>${e(plan.end_date)}</time></p>
           <p class="memo-priority memo-reveal">우선순위 ${priorities[plan.priority]}</p>
-          <p class="subtle"><a href="${e(url({ view: 'records', plan: plan.id }))}" data-open-memo-records>실행 기록 열기 ↗</a></p>
+          <div class="memo-execution subtle">
+            ${plan.completion ? '' : plan.execution_started_at
+              ? '<span>측정 중 · 완료를 누르면 저장돼요</span>'
+              : form('plan.start', hidden('id', plan.id), '작업 시작')}
+            <a href="${e(url({ view: 'records', plan: plan.id }))}" data-open-memo-records>실행 기록 열기 ↗</a>
+          </div>
           <div class="memo-stamp-slot">${memoStamp(plan.completion)}</div>${error}
           ${tags.length ? `<ul class="memo-tags" aria-label="해시태그">${tags.map(tag => `<li>#${e(tag)}</li>`).join('')}</ul>` : ''}
           <div class="plan-form-actions memo-actions">
@@ -308,7 +313,9 @@
       else if (query().view === 'review' && type === 'delete' && data.kind === 'review') render();
       else if (type === 'delete') navigate(data.kind === 'plan' ? {} : data.kind === 'execution' ? { plan: data.plan, task: data.task } : { plan: data.plan, metric: 'planned' });
       else navigate({ ...query(), view: 'records', plan: data.plan_id });
-      message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 계정에 저장되었어요.' : '기록이 계정에 저장되었어요.');
+      if (type === 'plan.start') message('작업 시간을 측정하기 시작했어요.');
+      else if (type === 'plan.complete' && result.observedExecutionId) message('계획을 완료하고 작업 시간을 저장했어요.');
+      else message(type === 'delete' ? '기록을 삭제했습니다. 변경 내용이 계정에 저장되었어요.' : '기록이 계정에 저장되었어요.');
     } catch (error) {
       if (errorLine) errorLine.textContent = error.message;
       else message(error.message, true);

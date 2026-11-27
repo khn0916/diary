@@ -54,4 +54,57 @@ apply('delete', { kind: 'execution', id: record });
 assert.equal(M.summary(state, plan).values.actual, 0);
 assert.equal(M.summary(state, plan).values.blocked, 0);
 assert.deepEqual(M.validate(state), state);
-console.log('PASS: immutable history, CRUD, duplicate completion/execution/next plan, Seoul dates, cohort sums, soft delete, safe restore and validation.');
+const start = '2026-11-18T03:05:42.000Z';
+const finish = '2026-11-18T03:25:03.000Z';
+const startCommand = { type: 'plan.start', data: { id: plan } };
+const completeCommand = { type: 'plan.complete', data: { id: plan } };
+const starting = M.apply(state, startCommand, start).state;
+assert.equal(M.apply(M.validate(starting), startCommand, finish).state.plans[0].execution_started_at, start);
+assert.throws(() => M.apply(starting, completeCommand, '2026-11-18T03:05:41.000Z'));
+const finished = M.apply(M.validate(starting), completeCommand, finish);
+const measured = M.find(finished.state, 'executions', finished.observedExecutionId);
+assert.equal(measured.started_at, '2026-11-18T03:05:00.000Z');
+assert.equal(measured.ended_at, '2026-11-18T03:25:00.000Z');
+assert.equal(M.summary(finished.state, plan).values.actual, 20);
+assert.equal(finished.state.plans[0].completion.date, '2026-11-18');
+assert.equal(finished.state.plans[0].execution_started_at, undefined);
+assert.deepEqual(M.validate(finished.state), finished.state);
+assert.deepEqual(M.apply(finished.state, completeCommand, finish).state, finished.state);
+assert.equal(M.apply(state, completeCommand, finish).state.executions.length, state.executions.length);
+
+async function checkCloudCompletion() {
+  const fs = require('node:fs');
+  const vm = require('node:vm');
+  let document = { version: 1, content: starting };
+  let observedWrites = 0;
+  const window = { PDSStorage: {}, diaryAccountId: 'test-owner', diaryDatabase: {
+    async rpc(name, args) {
+      if (name === 'diary_documents' && args.operation === 'get') return { data: document };
+      assert.equal(args.expected_version, document.version);
+      if (name === 'diary_save_observed_plan') {
+        observedWrites++;
+        const record = M.find(args.document_content, 'executions', args.execution_id);
+        assert.equal(M.find(args.document_content, 'tasks', record.task_id).plan_id, plan);
+        assert.ok(M.find(args.document_content, 'plans', plan).completion);
+        document = { version: document.version + 1, content: args.document_content };
+        return { data: { days: [{ value: record.actual_minutes }] } };
+      }
+      assert.equal(name, 'diary_documents');
+      assert.equal(args.operation, 'put');
+      return { data: null };
+    }
+  } };
+  class TestClock extends Date {
+    constructor() { super(finish); }
+  }
+  vm.runInNewContext(fs.readFileSync(require.resolve('./diary-cloud.js'), 'utf8'), { window, PDSModel: M, Date: TestClock });
+  const saved = await window.PDSStorage.write(completeCommand);
+  assert.equal(saved.study.days[0].value, 20);
+  assert.equal(saved.observedExecutionId, measured.id);
+  await window.PDSStorage.write(completeCommand);
+  assert.equal(observedWrites, 1);
+}
+
+checkCloudCompletion().then(() => {
+  console.log('PASS: plan history, CRUD, Seoul dates, evidence totals, backup validation and timed completion cloud save.');
+}).catch(error => { console.error(error); process.exitCode = 1; });

@@ -59,7 +59,7 @@
   }
   function apply(original, command, now = new Date().toISOString()) {
     const state = clone(original), d = command.data || {};
-    let id;
+    let id, observedExecutionId;
     if (command.type === 'plan.save') {
       let plan;
       if (d.id) {
@@ -73,9 +73,30 @@
         state.plans.push(plan);
       }
       snapshot(state, plan, now); id = plan.id;
+    } else if (command.type === 'plan.start') {
+      const plan = find(state, 'plans', d.id);
+      if (plan.completion) fail('이미 완료한 계획이에요.');
+      plan.execution_started_at ??= now;
+      id = plan.id;
     } else if (command.type === 'plan.complete') {
       const plan = find(state, 'plans', d.id);
       if (!plan.completion) {
+        if (plan.execution_started_at) {
+          const start = Date.parse(plan.execution_started_at), end = Date.parse(now);
+          if (end < start) fail('작업 시작보다 종료 시각이 빨라요. 기기의 날짜와 시간을 확인해주세요.');
+          const startMinute = Math.floor(start / 60000), endMinute = Math.floor(end / 60000);
+          const taskId = nextId(state);
+          state.tasks.push({ id: taskId, plan_id: plan.id, title: plan.title, due_date: plan.end_date,
+            priority: plan.priority, tags: plan.tags, estimated_minutes: plan.estimated_minutes,
+            completed: true, created_at: now, updated_at: now, deleted_at: null });
+          state.completions.push({ task_id: taskId, completed_at: now });
+          observedExecutionId = nextId(state);
+          state.executions.push({ id: observedExecutionId, task_id: taskId,
+            started_at: new Date(startMinute * 60000).toISOString(), ended_at: new Date(endMinute * 60000).toISOString(),
+            actual_minutes: integer(endMinute - startMinute), blocked_reason: '', idempotency_key: `plan-completion-${plan.id}`,
+            created_at: now, updated_at: now, deleted_at: null });
+          delete plan.execution_started_at;
+        }
         plan.completion = { date: today(new Date(now)), stamp: Math.floor(Math.random() * 3) + 1 };
         plan.updated_at = now;
       }
@@ -145,7 +166,7 @@
       const record = find(state, kinds[d.kind], d.id);
       record.deleted_at = now; record.updated_at = now; id = record.id;
     } else fail('지원하지 않는 작업입니다.');
-    return { state, id };
+    return observedExecutionId === undefined ? { state, id } : { state, id, observedExecutionId };
   }
   function tasks(state, planId, from = '', to = '') {
     find(state, 'plans', planId);
@@ -175,6 +196,10 @@
     };
     for (const kind of lists) if (!Array.isArray(candidate[kind]) || candidate[kind].length > 50000) fail('백업의 데이터 구조 또는 크기를 확인해주세요.');
     state.plans = candidate.plans.map(p => ({ ...base(p), ...planValues(p), ...completion(p), source_review_id: p.source_review_id == null ? null : integer(p.source_review_id, 1, Number.MAX_SAFE_INTEGER), improvement: text(p, 'improvement', 2000, false) }));
+    for (const [index, plan] of state.plans.entries()) {
+      const started = candidate.plans[index].execution_started_at;
+      if (started != null && !plan.completion) plan.execution_started_at = timestamp(started);
+    }
     state.tasks = candidate.tasks.map(t => { if (typeof t.completed !== 'boolean') fail('완료 상태가 올바르지 않습니다.'); return { ...base(t), plan_id: integer(t.plan_id, 1, Number.MAX_SAFE_INTEGER), title: text(t, 'title', 200), due_date: date(t.due_date), priority: integer(t.priority, 1, 3), tags: text(t, 'tags', 300, false), estimated_minutes: integer(t.estimated_minutes), completed: t.completed }; });
     state.executions = candidate.executions.map(r => {
       const started_at = timestamp(r.started_at), ended_at = timestamp(r.ended_at), minutes = (Date.parse(ended_at) - Date.parse(started_at)) / 60000;

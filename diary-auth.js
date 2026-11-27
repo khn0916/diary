@@ -41,10 +41,10 @@
   async function prepare(user) {
     userId = user.id;
     Object.defineProperty(window, 'diaryAccountId', { value: userId, configurable: true });
-    await load('pds-model.js?v=5');
+    await load('pds-model.js?v=6');
     await load('pds-storage.js?v=3');
     window.diaryDatabase = client;
-    await load('diary-cloud.js?v=2');
+    await load('diary-cloud.js?v=3');
     try {
       const saved = await window.DiaryCloud.read(journal ? 'journal' : 'plans');
       if (journal) window.DiaryCloud.initialJournal = saved.content;
@@ -62,7 +62,7 @@
       await load('app.js?v=16');
     } else {
       await load('diary-account.js?v=5');
-      await load('pds-web.js?v=19');
+      await load('pds-web.js?v=20');
     }
   }
 

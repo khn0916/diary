@@ -28,18 +28,19 @@
     return request('get', kind);
   }
 
-  async function update(kind, change, saveObservation = false) {
+  async function update(kind, change, refreshObservation = false) {
     for (let attempt = 0; attempt < 5; attempt++) {
       const current = await read(kind);
-      const { content, id } = change(current.content);
+      const { content, id, observedExecutionId } = change(current.content);
       try {
         const fields = { expected_version: current.version, document_content: content };
+        const saveObservation = refreshObservation || observedExecutionId !== undefined;
         const study = saveObservation ? await call('diary_save_observed_plan', {
-          ...fields, execution_id: saveObservation === 'execution' ? id : null
+          ...fields, execution_id: observedExecutionId ?? null
         }) : undefined;
         if (!saveObservation) await request('put', kind, fields);
         (kind === 'journal' ? journalChannel : legacyPlans.channel)?.postMessage('saved');
-        return { state: content, id, study };
+        return { state: content, id, study, observedExecutionId };
       } catch (error) {
         if (error.status !== 409 || attempt === 4) throw error;
       }
@@ -88,12 +89,12 @@
     read: async () => ({ state: planState((await read('plans')).content) }),
     write: command => {
       const now = new Date().toISOString();
-      const observe = command.type === 'execution.save' ? 'execution' :
-        command.type === 'delete' && ['execution', 'task', 'plan'].includes(command.data.kind);
+      const refreshObservation = command.type === 'delete' && ['execution', 'task', 'plan'].includes(command.data.kind);
       return update('plans', value => {
         const result = PDSModel.apply(planState(value), command, now);
-        return { content: result.state, id: result.id };
-      }, observe);
+        return { content: result.state, id: result.id,
+          observedExecutionId: command.type === 'execution.save' ? result.id : result.observedExecutionId };
+      }, refreshObservation);
     },
     restore: data => update('plans', () => ({ content: PDSModel.validate(data) }))
   };
